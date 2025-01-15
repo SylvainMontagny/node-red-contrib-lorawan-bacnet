@@ -1,0 +1,19 @@
+<script type="text/javascript">
+    RED.nodes.registerType('create device object', {
+        category: 'LoRaWAN Bacnet',
+        color: '#00aff0',
+        defaults: {
+            name: { value: "" }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "node-red/switch.svg",
+        label: function() {
+            return this.name || "Create Device Object";
+        }
+    });
+</script>
+
+<script type="text/x-red" data-help-name="create device object">
+    <p>Create Device Object node</p>
+</script>
