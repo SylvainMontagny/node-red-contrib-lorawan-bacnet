@@ -1,0 +1,26 @@
+<script type="text/javascript">
+  RED.nodes.registerType("device configuration", {
+    category: "LoRaWAN Bacnet",
+    color: "#00aff0",
+    defaults: {
+      name: { value: "" },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "node-red/switch.svg",
+    label: function () {
+      return this.name || "Device Configuration";
+    },
+  });
+</script>
+
+<script type="text/x-red" data-template-name="device configuration">
+  <div class="form-row">
+    <label for="node-input-ipAddress"><i class="icon-tag"></i> ipAddress</label>
+    <input type="text" id="node-input-ipAddress" placeholder="ipAddress" />
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="device configuration">
+  <p>Device Configuration node</p>
+</script>
