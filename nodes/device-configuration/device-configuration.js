@@ -1,10 +1,11 @@
 const tools = require("../shared/tools.js");
 
 module.exports = function (RED) {
-  function CreateDeviceObject(config) {
+  function DeviceConfiguration(config) {
     RED.nodes.createNode(this, config);
+    this.ipAddress = config.ipAddress;
     var node = this;
-    const nodeID = "ed250713f81379b7";
+    const nodeID = "54083d75c4d5d076";
     const nodeData = tools.findNode(nodeID);
     if (!nodeData || !nodeData.func) {
       node.error("No valid node found for the given ID");
@@ -12,10 +13,14 @@ module.exports = function (RED) {
     }
     let nodeFunction;
     try {
-      nodeFunction = new Function("msg", "node", "global", nodeData["func"]);
+        let functionBody = nodeData["func"].replace(
+            'const ipAddress = "TO_CONFIGURE";',
+            `const ipAddress = "${this.ipAddress}";`
+        );
+        nodeFunction = new Function("msg", "node", "global", functionBody);
     } catch (err) {
-      node.error("Failed to create dynamic function: " + err.message);
-      return;
+        node.error("Failed to create dynamic function: " + err.message);
+        return;
     }
 
     node.on("input", function (msg) {
@@ -28,5 +33,5 @@ module.exports = function (RED) {
     });
   }
 
-  RED.nodes.registerType("device configuration", CreateDeviceObject);
+  RED.nodes.registerType("device configuration", DeviceConfiguration);
 };

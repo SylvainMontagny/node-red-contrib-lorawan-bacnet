@@ -15,5 +15,8 @@
       "create-device-object": "nodes/create-device-object/create-device-object.js",
       "device-configuration": "nodes/device-configuration/device-configuration.js"
     }
+  },
+  "dependencies": {
+    "node-red-contrib-lorawan-bacnet": "file:"
   }
 }
