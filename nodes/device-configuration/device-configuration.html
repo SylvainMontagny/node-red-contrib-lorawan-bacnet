@@ -1,6 +1,6 @@
 <script type="text/javascript">
   RED.nodes.registerType("device configuration", {
-    category: "LoRaWAN Bacnet",
+    category: "LoRaBAC",
     color: "#00aff0",
     defaults: {
       name: { value: "" },
@@ -11,13 +11,112 @@
     label: function () {
       return this.name || "Device Configuration";
     },
+
+    oneditprepare: function() {
+      $("#node-input-ipAddress").val(this.ipAddress || "");
+      $("#node-input-networkServer").val(this.networkServer || "tts");
+      $("#node-input-protocol").val(this.protocol || "restAPIBacnet");
+      $("#node-input-grpcApiKey").val(this.grpcApiKey || "");
+      $("#node-input-bacnetLogin").val(this.bacnetLogin || "");
+      $("#node-input-bacnetPassword").val(this.bacnetPassword || "");
+
+      var networkServerSelect = $("#node-input-networkServer");
+      var chirpstackDiv = $("#chirpstack-config");
+
+      var protocolSelect = $("#node-input-protocol");
+      var bacnetLogin = $("#bacnet-login");
+
+      function toggleChirpstackConfig() {
+          if (networkServerSelect.val() === "chirpstack") {
+            chirpstackDiv.show();
+          } else {
+            chirpstackDiv.hide();
+          }
+      }
+
+      function toggleBacnetLoginConfig() {
+          if (protocolSelect.val() === "restAPIBacnet") {
+            bacnetLogin.show();
+          } else {
+            bacnetLogin.hide();
+          }
+      }
+
+      toggleChirpstackConfig();
+      toggleBacnetLoginConfig();
+
+      networkServerSelect.on("change", toggleChirpstackConfig);
+      protocolSelect.on("change", toggleBacnetLoginConfig);
+    },
+
+    oneditsave: function() {
+      this.ipAddress = $("#node-input-ipAddress").val();
+      this.networkServer = $("#node-input-networkServer").val();
+      this.protocol = $("#node-input-protocol").val();
+      this.grpcApikey = $("#node-input-grpcApikey").val();
+      this.bacnetLogin = $("#node-input-bacnetLogin").val();
+      this.bacnetPassword = $("#node-input-bacnetPassword").val();
+    }
   });
 </script>
 
 <script type="text/x-red" data-template-name="device configuration">
   <div class="form-row">
-    <label for="node-input-ipAddress"><i class="icon-tag"></i> ipAddress</label>
-    <input type="text" id="node-input-ipAddress" placeholder="ipAddress" />
+    <h3><i class="fa fa-cog"></i> Device Configuration</h3>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-ipAddress" style="width: 120px"><i class="fa fa-globe"></i> IP Address</label>
+    <input type="text" id="node-input-ipAddress"/>
+  </div>
+
+  <div class="form-row">
+      <label for="node-input-networkServer" style="width: 120px">
+        <i class="fa fa-signal"></i> Network Server
+    </label>
+    <select id="node-input-networkServer">
+        <option value="tts">TTS</option>
+        <option value="chirpstack">Chirpstack</option>
+        <option value="actility">Actility</option>
+    </select>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-protocol" style="width: 120px">
+      <i class="fa fa-plug"></i> Protocol
+    </label>
+    <select id="node-input-protocol">
+        <option value="restAPIBacnet">REST API BACnet</option>
+        <option value="bacnet">BACnet</option>
+        <!--
+          <option value="restAPIModbus">REST API Modbus</option>
+          <option value="modbus">Modbus</option>
+        -->
+    </select>
+  </div>
+
+  <div id="chirpstack-config">
+    <div class="form-row">
+      <h3><i class="fa fa-cog"></i> Chirpstack configuration</h3>
+    </div>
+    <div class="form-row">
+      <label for="node-input-grpcApiKey" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
+      <input type="text" id="node-input-grpcApiKey"/>
+    </div>
+  </div>
+
+  <div id="bacnet-login">
+    <div class="form-row">
+      <h3><i class="fa fa-cog"></i> Rest API BACnet Login</h3>
+    </div>
+    <div class="form-row">
+      <label for="node-input-bacnetLogin" style="width: 120px"><i class="fa fa-user"></i> Login</label>
+      <input type="text" id="node-input-bacnetLogin"/>
+    </div>
+    <div class="form-row">
+      <label for="node-input-bacnetPassword" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
+      <input type="text" id="node-input-bacnetPassword"/>
+    </div>
   </div>
 </script>
 
