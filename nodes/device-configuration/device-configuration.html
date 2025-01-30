@@ -4,6 +4,12 @@
     color: "#00aff0",
     defaults: {
       name: { value: "" },
+      ipAddress: { value: ""},
+      networkServer: { value: "tts"},
+      protocol: { value: "restAPIBacnet"},
+      grpcApikey: { value: ""},
+      bacnetLogin: { value: ""},
+      bacnetPassword: { value: ""}
     },
     inputs: 1,
     outputs: 1,
@@ -12,14 +18,7 @@
       return this.name || "Device Configuration";
     },
 
-    oneditprepare: function() {
-      $("#node-input-ipAddress").val(this.ipAddress || "");
-      $("#node-input-networkServer").val(this.networkServer || "tts");
-      $("#node-input-protocol").val(this.protocol || "restAPIBacnet");
-      $("#node-input-grpcApiKey").val(this.grpcApiKey || "");
-      $("#node-input-bacnetLogin").val(this.bacnetLogin || "");
-      $("#node-input-bacnetPassword").val(this.bacnetPassword || "");
-
+    oneditprepare: function () {
       var networkServerSelect = $("#node-input-networkServer");
       var chirpstackDiv = $("#chirpstack-config");
 
@@ -27,19 +26,19 @@
       var bacnetLogin = $("#bacnet-login");
 
       function toggleChirpstackConfig() {
-          if (networkServerSelect.val() === "chirpstack") {
-            chirpstackDiv.show();
-          } else {
-            chirpstackDiv.hide();
-          }
+        if (networkServerSelect.val() === "chirpstack") {
+          chirpstackDiv.show();
+        } else {
+          chirpstackDiv.hide();
+        }
       }
 
       function toggleBacnetLoginConfig() {
-          if (protocolSelect.val() === "restAPIBacnet") {
-            bacnetLogin.show();
-          } else {
-            bacnetLogin.hide();
-          }
+        if (protocolSelect.val() === "restAPIBacnet") {
+          bacnetLogin.show();
+        } else {
+          bacnetLogin.hide();
+        }
       }
 
       toggleChirpstackConfig();
@@ -49,7 +48,7 @@
       protocolSelect.on("change", toggleBacnetLoginConfig);
     },
 
-    oneditsave: function() {
+    oneditsave: function () {
       this.ipAddress = $("#node-input-ipAddress").val();
       this.networkServer = $("#node-input-networkServer").val();
       this.protocol = $("#node-input-protocol").val();
@@ -89,8 +88,8 @@
         <option value="restAPIBacnet">REST API BACnet</option>
         <option value="bacnet">BACnet</option>
         <!--
-          <option value="restAPIModbus">REST API Modbus</option>
-          <option value="modbus">Modbus</option>
+        <option value="restAPIModbus">REST API Modbus</option>
+        <option value="modbus">Modbus</option>
         -->
     </select>
   </div>
