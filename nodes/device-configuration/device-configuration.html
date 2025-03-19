@@ -4,7 +4,14 @@
     color: "#00aff0",
     icon: "node-red/cog.svg",
     defaults: {
-      list: { value: [], required: true }
+      ipAddress: { value: "", required: false },
+      networkServer: { value: "tts", required: true },
+      grpcApiKey: { value: "", required: false },
+      protocol: { value: "restAPIBacnet", required: true },
+      bacnetLogin: { value: "", required: false },
+      bacnetPassword: { value: "", required: false },
+      deviceCount: { value: 1, required: true },
+      deviceList: { value: [], required: true }
     },
     inputs: 1,
     outputs: 1,
@@ -14,195 +21,431 @@
     oneditprepare: function () {
       var node = this;
 
+      var ipAddressInput = $("#node-input-ipAddress");
+      var networkServerSelect = $("#node-input-networkServer");
+      var chirpstackDiv = $("#chirpstack-config");
+      var chirpstackGrpcApiKey = $("#node-input-grpcApiKey");
+
+      var protocolSelect = $("#node-input-protocol");
+      var bacnetLogin = $("#bacnet-login");
+      var bacnetLoginInput = $("#node-input-bacnetLogin");
+      var bacnetPasswordInput = $("#node-input-bacnetPassword");
+
+      // Restore the configuration
+      if (node.ipAddress) ipAddressInput.val(node.ipAddress);
+      if (node.networkServer) networkServerSelect.val(node.networkServer);
+      if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
+      if (node.protocol) protocolSelect.val(node.protocol);
+      if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
+      if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
+
+      function createNewDevice() {
+        let device = {
+          deviceName: `device-${node.deviceCount}`,
+          identity: {
+            maxDeviceNum: 99
+          },
+          controller: {
+            debug: ["all"],
+            model: "distechControlsV2",
+            protocol: protocolSelect.val(),
+            ipAddress: ipAddressInput.val(),
+            login: bacnetLoginInput.val(),
+            password: bacnetPasswordInput.val(),
+            httpAuthentication: "Basic VE9fQ09ORklHVVJFX0lGX1VTSU5HX3Jlc3RBUElCYWNuZXQ6VE9fQ09ORklHVVJFX0RfU1RBUlQ="
+          },
+          lorawan: {
+            networkServer: networkServerSelect.val(),
+            downlinkPort: 30,
+            flushDownlinkQueue: true,
+            chirpstack: {
+              grpcApiKey: chirpstackGrpcApiKey.val()
+            },
+            actility: {
+              driver: {
+                pId: "TO_CONFIGURE_IF_USING_ACTILITY_AND_DOWNLINK",
+                mId: "TO_CONFIGURE_IF_USING_ACTILITY_AND_DOWNLINK",
+                ver: "TO_CONFIGURE_IF_USING_ACTILITY_AND_DOWNLINK"
+              }
+            }
+          },
+          bacnet: {
+            offset: 0,
+            instanceRange: 10,
+            objects: {
+
+            }
+          },
+          mqtt: {
+            topicDownlink: {
+
+            }
+          }
+        };
+        node.deviceList.push(device);
+        node.deviceCount++;
+      }
+
       function updateList() {
         $("#node-input-list-container").empty();
-        node.list.forEach(function (item, index) {
-          var row = $("<div>").addClass("node-row").appendTo("#node-input-list-container");
+        node.deviceList.forEach(function (device, index) {
+          var row = $("<div>").addClass("form-row").appendTo("#node-input-list-container");
 
           $("<input>")
-            .attr({ type: "text", value: item.name, class: "node-input-list-item" })
+            .attr({ type: "text", value: device.deviceName, class: "node-input-list-item" })
             .appendTo(row);
 
+          // Edit button
           $("<button>")
-            .text("🖉")
-            .addClass("node-input-list-edit")
+            .html(`<i class="fa fa-pencil"></i>`)
+            .css("margin-left", "10px")
+            .addClass("red-ui-button")
             .click(function () {
-              $("#device-config-name").val(item.name);
-              $("#device-config-protocol").val(item.protocol);
-
               RED.tray.show({
                 title: "Configure device",
                 width: 400,
                 buttons: [
-                  {
-                    text: "Save",
-                    class: "primary",
-                    click: function () {
-                      var updatedName = trayContent.find("#device-config-name").val();
-                      var updatedProtocol = trayContent.find("#device-config-protocol").val();
 
-                      node.list[index] = {
-                        name: updatedName,
-                        protocol: updatedProtocol
-                      };
-
-                      updateList();
-                      RED.tray.close();
-                    }
-                  },
                   {
                     text: "Cancel",
                     click: function () {
                       RED.tray.close();
                     }
+                  },
+                  {
+                    text: "Save",
+                    class: "primary",
+                    click: function () {
+                      device.deviceName = $("#node-input-deviceName").val();
+                      device.identity.maxDeviceNum = Number($("#node-input-maxDeviceNum").val());
+                      device.controller.debug = [$("#node-input-debug").val()];
+                      device.lorawan.downlinkPort = Number($("#node-input-downlinkPort").val());
+                      device.bacnet.offset = Number($("#node-input-offset").val());
+                      device.bacnet.instanceRange = Number($("#node-input-instanceRange").val());
+
+                      RED.tray.close();
+                      setTimeout(() => {
+                        updateList();
+                      }, 500);
+                    }
                   }
                 ],
                 open: function (tray) {
                   let trayBody = tray.find('.red-ui-tray-body');
-                  trayBody.append(`
-                      <form id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
-                        <div class="form-row">
-                          <h3><i class="fa fa-cog"></i> Device Configuration</h3>
-                        </div>
+                  trayBody.html($("#objects-tray-template").html());
+                  let deviceNameInput = $("#node-input-deviceName");
+                  let maxDeviceNumInput = $("#node-input-maxDeviceNum");
+                  let debugSelect = $("#node-input-debug");
+                  let downlinkPortInput = $("#node-input-downlinkPort");
+                  let offsetInput = $("#node-input-offset");
+                  let instanceRangeInput = $("#node-input-instanceRange");
 
-                        <div class="form-row">
-                          <label for="node-input-ipAddress" style="width: 120px"><i class="fa fa-globe"></i> IP Address</label>
-                          <input type="text" id="node-input-ipAddress"/>
-                        </div>
+                  deviceNameInput.val(device.deviceName);
+                  maxDeviceNumInput.val(device.identity.maxDeviceNum);
+                  debugSelect.val(device.controller.debug);
+                  downlinkPortInput.val(device.lorawan.downlinkPort);
+                  offsetInput.val(device.bacnet.offset);
+                  instanceRangeInput.val(device.bacnet.instanceRange);
 
-                        <div class="form-row">
-                            <label for="node-input-networkServer" style="width: 120px">
-                              <i class="fa fa-signal"></i> Network Server
-                          </label>
-                          <select id="node-input-networkServer">
-                              <option value="tts">TTS</option>
-                              <option value="chirpstack">Chirpstack</option>
-                              <option value="actility">Actility</option>
-                          </select>
-                        </div>
+                  var objectTable = $("#object-list-table tbody");
+                  var addObjectBtn = $("#add-object-btn");
 
-                        <div class="form-row">
-                          <label for="node-input-protocol" style="width: 120px">
-                            <i class="fa fa-plug"></i> Protocol
-                          </label>
-                          <select id="node-input-protocol">
-                              <option value="restAPIBacnet">REST API BACnet</option>
-                              <option value="bacnet">BACnet</option>
-                              <!--
-                                <option value="restAPIModbus">REST API Modbus</option>
-                                <option value="modbus">Modbus</option>
-                              <option value="restAPIModbus">REST API Modbus</option>
-                              <option value="modbus">Modbus</option>
-                              -->
-                          </select>
-                        </div>
+                  // Add row to object table
+                  function addObjectRow(payloadName = "", objectType = "analogValue", dataDirection = "uplink", value = "") {
+                    var newRow = $("#object-row-template").html();
+                    var rowElement = $(newRow);
 
-                        <div id="chirpstack-config">
-                          <div class="form-row">
-                            <h3><i class="fa fa-cog"></i> Chirpstack configuration</h3>
-                          </div>
-                          <div class="form-row">
-                            <label for="node-input-grpcApiKey" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
-                            <input type="text" id="node-input-grpcApiKey"/>
-                          </div>
-                        </div>
+                    rowElement.find(".object-payload").val(payloadName);
+                    rowElement.find(".object-type").val(objectType);
+                    rowElement.find(".object-direction").val(dataDirection);
+                    rowElement.find(".object-value").val(value);
 
-                        <div id="bacnet-login">
-                          <div class="form-row">
-                            <h3><i class="fa fa-cog"></i> Rest API BACnet Login</h3>
-                          </div>
-                          <div class="form-row">
-                            <label for="node-input-bacnetLogin" style="width: 120px"><i class="fa fa-user"></i> Login</label>
-                            <input type="text" id="node-input-bacnetLogin"/>
-                          </div>
-                          <div class="form-row">
-                            <label for="node-input-bacnetPassword" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
-                            <input type="text" id="node-input-bacnetPassword"/>
-                          </div>
-                        </div>
-                      </form>
-                  `);
-                  var networkServerSelect = $("#node-input-networkServer");
-                  var chirpstackDiv = $("#chirpstack-config");
-
-                  var protocolSelect = $("#node-input-protocol");
-                  var bacnetLogin = $("#bacnet-login");
-
-                  function toggleChirpstackConfig() {
-                    if (networkServerSelect.val() === "chirpstack") {
-                      chirpstackDiv.show();
-                    } else {
-                      chirpstackDiv.hide();
-                    }
-                    if (networkServerSelect.val() === "chirpstack") {
-                      chirpstackDiv.show();
-                    } else {
-                      chirpstackDiv.hide();
-                    }
+                    $("#object-list-table tbody").append(rowElement);
                   }
 
-                  function toggleBacnetLoginConfig() {
-                    if (protocolSelect.val() === "restAPIBacnet") {
-                      bacnetLogin.show();
-                    } else {
-                      bacnetLogin.hide();
-                    }
-                    if (protocolSelect.val() === "restAPIBacnet") {
-                      bacnetLogin.show();
-                    } else {
-                      bacnetLogin.hide();
-                    }
+                  addObjectBtn.on("click", function () {
+                    addObjectRow();
+                  });
+
+                  objectTable.on("click", ".remove-object-btn", function () {
+                    $(this).closest("tr").remove();
+                  });
+
+                  /*
+                  if (node.deviceList && node.deviceList.length > 0) {
+                      node.deviceList.forEach(obj => {
+                          addObjectRow(obj.payloadName, obj.objectType, obj.dataDirection, obj.value);
+                      });
                   }
-
-                  toggleChirpstackConfig();
-                  toggleBacnetLoginConfig();
-
-                  networkServerSelect.on("change", toggleChirpstackConfig);
-                  protocolSelect.on("change", toggleBacnetLoginConfig);
-
+                  */
                 }
               });
             })
             .appendTo(row);
 
+          // Delete button
           $("<button>")
-            .text("🗑")
-            .addClass("node-input-list-remove")
+            .css("margin-left", "10px")
+            .html(`<i class="fa fa-trash"></i>`)
+            .addClass("red-ui-button")
             .click(function () {
-              node.list.splice(index, 1);
+              node.deviceList.splice(index, 1);
               updateList();
             })
             .appendTo(row);
         });
       }
 
-      $("#node-input-add").click(function () {
-        node.list.push({ name: "", protocol: "TCP" });
-        updateList();
-      });
+
+
+      $("#node-input-add")
+        .addClass("editor-button")
+        .click(function () {
+          createNewDevice();
+          updateList();
+        });
 
       updateList();
-    }
-    ,
+
+
+      function toggleChirpstackConfig() {
+        if (networkServerSelect.val() === "chirpstack") {
+          chirpstackDiv.show();
+        } else {
+          chirpstackDiv.hide();
+        }
+        if (networkServerSelect.val() === "chirpstack") {
+          chirpstackDiv.show();
+        } else {
+          chirpstackDiv.hide();
+        }
+      }
+
+      function toggleBacnetLoginConfig() {
+        if (protocolSelect.val() === "restAPIBacnet") {
+          bacnetLogin.show();
+        } else {
+          bacnetLogin.hide();
+        }
+        if (protocolSelect.val() === "restAPIBacnet") {
+          bacnetLogin.show();
+        } else {
+          bacnetLogin.hide();
+        }
+      }
+
+      toggleChirpstackConfig();
+      toggleBacnetLoginConfig();
+
+      networkServerSelect.on("change", toggleChirpstackConfig);
+      protocolSelect.on("change", toggleBacnetLoginConfig);
+    },
     oneditsave: function () {
-      var list = [];
-      $(".node-input-list-item").each(function (i, el) {
-        list.push({
-          name: $(el).val(),
-        });
-      }.bind(this));
-      this.list = list;
+      // Save the configuration
+      this.ipAddress = $("#node-input-ipAddress").val();
+      this.networkServer = $("#node-input-networkServer").val();
+      this.grpcApiKey = $("#node-input-grpcApiKey").val();
+      this.protocol = $("#node-input-protocol").val();
+      this.bacnetLogin = $("#node-input-bacnetLogin").val();
+      this.bacnetPassword = $("#node-input-bacnetPassword").val();
+
+      this.deviceList.forEach(function (device) {
+        device.controller.ipAddress = $("#node-input-ipAddress").val();
+        device.lorawan.networkServer = $("#node-input-networkServer").val();
+        device.controller.protocol = $("#node-input-protocol").val();
+
+        device.controller.login = $("#node-input-bacnetLogin").val();
+        device.controller.password = $("#node-input-bacnetPassword").val();
+
+        device.lorawan.chirpstack.grpcApiKey = $("#node-input-grpcApiKey").val();
+      });
+      console.log(this.deviceList);
+      this.changed = true;
+      RED.nodes.dirty(this.id);
+      RED.notify("Device list saved", "success");
     }
   });
 </script>
 
-<script type="text/x-red" data-template-name="device configuration">
+<script type="text/html" data-template-name="device configuration">
   <div>
-    <label>Device list :</label>
+    <form id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> Global Configuration</h3>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-ipAddress" style="width: 120px"><i class="fa fa-globe"></i> IP Address</label>
+        <input type="text" id="node-input-ipAddress"/>
+      </div>
+
+      <div class="form-row">
+          <label for="node-input-networkServer" style="width: 120px">
+            <i class="fa fa-signal"></i> Network Server
+        </label>
+        <select id="node-input-networkServer">
+            <option value="tts">TTS</option>
+            <option value="chirpstack">Chirpstack</option>
+            <option value="actility">Actility</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-protocol" style="width: 120px">
+          <i class="fa fa-plug"></i> Protocol
+        </label>
+        <select id="node-input-protocol">
+            <option value="restAPIBacnet">REST API BACnet</option>
+            <option value="bacnet">BACnet</option>
+            <!--
+              <option value="restAPIModbus">REST API Modbus</option>
+              <option value="modbus">Modbus</option>
+            <option value="restAPIModbus">REST API Modbus</option>
+            <option value="modbus">Modbus</option>
+            -->
+        </select>
+      </div>
+
+      <div id="chirpstack-config">
+        <div class="form-row">
+          <h3><i class="fa fa-cog"></i> Chirpstack configuration</h3>
+        </div>
+        <div class="form-row">
+          <label for="node-input-grpcApiKey" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
+          <input type="text" id="node-input-grpcApiKey"/>
+        </div>
+      </div>
+
+      <div id="bacnet-login">
+        <div class="form-row">
+          <h3><i class="fa fa-cog"></i> Rest API BACnet Login</h3>
+        </div>
+        <div class="form-row">
+          <label for="node-input-bacnetLogin" style="width: 120px"><i class="fa fa-user"></i> Login</label>
+          <input type="text" id="node-input-bacnetLogin" style="width: 70%"/>
+        </div>
+        <div class="form-row">
+          <label for="node-input-bacnetPassword" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
+          <input type="text" id="node-input-bacnetPassword" style="width: 70%"/>
+        </div>
+      </div>
+    </form>
+    <div class="form-row">
+      <h3><i class="fa fa-th-list"></i> Object list</h3>
+    </div>
     <div id="node-input-list-container"></div>
-    <button id="node-input-add">+ Add device</button>
+    <div class="form-row">
+      <button id="node-input-add"><i class="fa fa-plus"></i> Add device</button>
+    </div>
   </div>
 </script>
+
+<script type="text/html" id="objects-tray-template">
+  <div>
+    <form id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> Device Configuration</h3>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-deviceName" style="width: 120px"><i class="fa fa-tag"></i> Device name</label>
+        <input type="text" id="node-input-deviceName"/>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-maxDeviceNum" style="width: auto"><i class="fa fa-arrow-up"></i> Maximum Device Number</label>
+        <input type="number" id="node-input-maxDeviceNum" style="width: 80px; margin-left: 10px;"/>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-debug" style="width: 120px">
+          <i class="fa fa-bug"></i> Debug
+        </label>
+        <select id="node-input-debug">
+            <option value="all">All</option>
+            <option value="up">Up</option>
+            <option value="down">Down</option>
+            <option value="creation">Creation</option>
+            <option value="txTime">TxTime</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-downlinkPort" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
+        <input type="number" id="node-input-downlinkPort" style="width: 80px"/>
+      </div>
+
+      <div class="form-row">
+        <h3><i class="fa fa-th-list"></i> Object list</h3>
+      </div>
+      <div class="form-row">
+        <label for="node-input-offset" style="width: 120px"><i class="fa fa-arrows-h"></i> Offset</label>
+        <input type="number" id="node-input-offset" style="width: 80px"/>
+      </div>
+      <div class="form-row">
+        <label for="node-input-instanceRange" style="width: 120px"><i class="fa fa-arrows"></i> Instance Range</label>
+        <input type="number" id="node-input-instanceRange" style="width: 80px"/>
+      </div>
+
+      <div class="form-row">
+        <table id="object-list-table" border="1" style="width: 100%; margin-top: 10px; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="padding: 5px; text-align: left;">Payload Name</th>
+              <th style="padding: 5px; text-align: left;">Object Type</th>
+              <th style="padding: 5px; text-align: left;">Data Direction</th>
+              <th style="padding: 5px; text-align: left;">Value</th>
+              <th style="padding: 5px; text-align: left;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-row">
+        <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px;">
+          <i class="fa fa-plus"></i> Add Object
+        </button>
+      </div>
+
+    </form>
+  </div>
+    <style>
+      #object-list-table th,
+      #object-list-table td {
+          text-align: center;
+          vertical-align: middle;
+      }
+  </style>
+</script>
+
+<script type="text/html" id="object-row-template">
+  <tr>
+      <td><input type="text" class="object-payload" value="" style="width: auto"/></td>
+      <td>
+          <select class="object-type" style="width: auto">
+              <option value="analogValue">Analog</option>
+              <option value="binaryValue">Binary</option>
+          </select>
+      </td>
+      <td>
+          <select class="object-direction" style="width: auto">
+              <option value="uplink">Uplink</option>
+              <option value="downlink">Downlink</option>
+          </select>
+      </td>
+      <td><input type="number" class="object-value" value="" style="width: 50px;" /></td>
+      <td>
+          <button type="button" class="red-ui-button remove-object-btn" style="color: rgb(163, 2, 2);">
+              <i class="fa fa-trash"></i>
+          </button>
+      </td>
+  </tr>
+</script>
+
 
 <script type="text/x-red" data-help-name="device configuration">
   <p>Device Configuration node</p>
