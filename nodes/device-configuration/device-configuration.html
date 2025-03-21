@@ -136,7 +136,7 @@
           var row = $("<div>").addClass("form-row").appendTo("#node-input-list-container");
 
           // Device name input
-          $("<input>")
+          let deviceNameInput = $("<input>")
             .attr({ type: "text", value: device.deviceName, class: "node-input-list-item" })
             .appendTo(row);
 
@@ -146,6 +146,7 @@
             .css("margin-left", "10px")
             .addClass("red-ui-button")
             .click(function () {
+              device.deviceName = deviceNameInput.val();
               showDeviceTray(device);
             })
             .appendTo(row);
@@ -199,12 +200,15 @@
                 device.bacnet.offset = Number($("#node-input-offset").val());
                 device.bacnet.instanceRange = Number($("#node-input-instanceRange").val());
 
-                device.actility.driver.pId = $("#node-input-pId").val();
-                device.actility.driver.mId = $("#node-input-mId").val();
-                device.actility.driver.ver = $("#node-input-ver").val();
+                device.lorawan.actility.driver.pId = $("#node-input-pId").val();
+                device.lorawan.actility.driver.mId = $("#node-input-mId").val();
+                device.lorawan.actility.driver.ver = $("#node-input-ver").val();
 
                 RED.tray.close();
-                updateList();
+                //Timeout to allow the tray to close before updating the list
+                setTimeout(() => {
+                  updateList();
+                }, 500);
               }
             }
           ],
