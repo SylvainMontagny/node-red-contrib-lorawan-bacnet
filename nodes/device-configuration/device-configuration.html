@@ -42,7 +42,6 @@
       if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
       if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
 
-
       // Toggle configurations inputs visibility  
       function toggleChirpstackConfig() {
         if (networkServerSelect.val() === "chirpstack") {
@@ -214,7 +213,6 @@
             .html(`<i class="fa fa-trash"></i>`)
             .addClass("red-ui-button")
             .click(function () {
-              console.log("delete");
               device.bacnet.objects.splice(index, 1);
               updateObjectList(device);
             })
@@ -244,6 +242,7 @@
                 device.deviceName = $("#node-input-deviceName").val();
                 device.identity.maxDeviceNum = Number($("#node-input-maxDeviceNum").val());
                 device.controller.debug = [$("#node-input-debug").val()];
+                device.lorawan.flushDownlinkQueue = ($("#node-input-flush-downlink-queue").val() === "true") ? true : false; // Boolean conversion
                 device.lorawan.downlinkPort = Number($("#node-input-downlinkPort").val());
                 device.bacnet.offset = Number($("#node-input-offset").val());
                 device.bacnet.instanceRange = Number($("#node-input-instanceRange").val());
@@ -267,6 +266,8 @@
             $("#node-input-deviceName").val(device.deviceName);
             $("#node-input-maxDeviceNum").val(device.identity.maxDeviceNum);
             $("#node-input-debug").val(device.controller.debug);
+            console.log(device.lorawan);
+            $("#node-input-flush-downlink-queue").val(String(device.lorawan.flushDownlinkQueue));
             $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
             $("#node-input-offset").val(device.bacnet.offset);
             $("#node-input-instanceRange").val(device.bacnet.instanceRange);
@@ -276,7 +277,6 @@
             $("#node-input-ver").val(device.lorawan.actility.driver.ver);
 
             let actilityConfiguration = $("#actility-configuration");
-            console.log(node.networkServer);
             if (node.networkServer === "actility") {
               actilityConfiguration.show();
             } else {
@@ -289,6 +289,8 @@
               createNewObject(device);
               updateObjectList(device);
             })
+
+            updateObjectList(device);
           }
         });
       }
@@ -311,13 +313,15 @@
               text: "Save",
               class: "primary",
               click: function () {
-                // Save the object configuration in the device list
-                console.log("Saved object")
-
                 object.objectName = $("#node-input-object-name").val();
                 object.dataDirection = $("#node-input-data-direction").val();
                 object.objectType = $("#node-input-object-type").val();
-                object.value = $("#node-input-deviceName").val();
+
+                if(object.objectType === "analogValue") {
+                  object.value = Number($("#node-input-analog-value").val());
+                } else if (object.objectType === "binaryValue") {
+                  object.value = Number($("#node-input-binary-value").val());
+                }
 
                 RED.tray.close();
                 //Timeout to allow the tray to close before updating the list
@@ -333,9 +337,38 @@
 
             $("#node-input-object-name").val(object.objectName);
             $("#node-input-data-direction").val(object.dataDirection);
-            $("#node-input-object-type").val(object.objectType);
-            $("#node-input-deviceName").val(object.value);
+            let objectTypeSelect = $("#node-input-object-type");
+            objectTypeSelect.val(object.objectType);
 
+            let analogContainer = $("#node-analog-value-container");
+            let binaryContainer = $("#node-binary-value-container");
+
+            let analogDefaultValue = null;
+            let binaryDefaultValue = 0;
+
+            function toggleValueField() {
+              if (objectTypeSelect.val() === "analogValue") {
+                analogContainer.show();
+                binaryContainer.hide();
+                $("#node-input-analog-value").val(analogDefaultValue);
+              } else if (objectTypeSelect.val() === "binaryValue") {
+                analogContainer.hide();
+                binaryContainer.show();
+                $("#node-input-binary-value").val(binaryDefaultValue);
+              }
+            }
+
+            objectTypeSelect.on("change", function () {
+              toggleValueField();
+            });
+
+            toggleValueField();
+
+            if(object.objectType === "analogValue") {
+              $("#node-input-analog-value").val(object.value);
+            } else if (object.objectType === "binaryValue") {
+              $("#node-input-binary-value").val(object.value);
+            }
           }
         });
       }
@@ -476,6 +509,16 @@
       </div>
 
       <div class="form-row">
+        <label for="node-input-flush-downlink-queue" style="width: auto">
+          <i class="fa fa-link"></i> Flush Downlink Queue
+        </label>
+        <select id="node-input-flush-downlink-queue">
+            <option value="true">True</option>
+            <option value="false">False</option>
+        </select>
+      </div>
+
+      <div class="form-row">
         <label for="node-input-downlinkPort" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
         <input type="number" id="node-input-downlinkPort" style="width: 80px"/>
       </div>
@@ -556,20 +599,20 @@
         </select>
       </div>
 
-      <div class="form-row">
-        <label for="node-input-value" style="width: 120px"><i class="fa fa-hashtag"></i> Value</label>
-        <input type="number" id="node-input-value"/>
+      <div class="form-row" id="node-analog-value-container">
+        <label for="node-input-analog-value" style="width: 120px"><i class="fa fa-hashtag"></i> Analog Value</label>
+        <input type="number" id="node-input-analog-value"/>
       </div>
 
-      <!-- <div class="form-row">
-        <label for="node-input-object-type" style="width: 120px">
-          <i class="fa fa-hashtag"></i> Binary value
+      <div class="form-row" id="node-binary-value-container">
+        <label for="node-input-binary-value" style="width: 120px">
+          <i class="fa fa-hashtag"></i> Binary Value
         </label>
-        <select id="node-input-object-type">
+        <select id="node-input-binary-value">
             <option value="0">0</option>
             <option value="1">1</option>
         </select>
-      </div> -->
+      </div>
 
     </form>
   </div>
