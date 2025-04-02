@@ -203,6 +203,7 @@
             .css("margin-left", "10px")
             .addClass("red-ui-button")
             .click(function () {
+              object.objectName = objectNameInput.val();
               showObjectTray(device, object);
             })
             .appendTo(row);
