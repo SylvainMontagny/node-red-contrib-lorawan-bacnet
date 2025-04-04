@@ -1,26 +1,53 @@
 # node-red-contrib-lorawan-bacnet
 
+This Node-RED module provides custom nodes for integrating LoRaWAN devices with BACnet systems. It simplifies the process of connecting IoT devices using LoRaWAN to building automation systems that use the BACnet protocol.
+
+## Features
+
+- **Create Device Object Node**: Processes LoRaWAN messages and creates BACnet-compatible device objects.
+- **Device Configuration Node**: Provides a graphical interface for configuring devices and their BACnet objects.
+
+## Nodes
+
+### 1. Create Device Object Node
+
+The **Create Device Object Node** is responsible for:
+- Parsing incoming LoRaWAN messages from network servers (e.g., TTS, Chirpstack, Actility).
+- Extracting and validating device information.
+- Creating structured BACnet-compatible device objects.
+- Handling payload decoding to ensure compatibility with BACnet protocols.
+
+
+---
+
+### 2. Device Configuration Node
+
+The **Device Configuration Node** provides a user-friendly interface for:
+- Configuring devices and their associated BACnet objects.
+- Managing device lists and creating new BACnet objects.
+- Supporting multiple network servers and protocols, including REST API BACnet and native BACnet.
+- Allowing protocol-specific configurations, such as Actility driver settings.
+
+---
+
 ## Installation
 
-1. Clone or copy the module directory to your machine:
-   ```bash
-   cd node-red-contrib-lorawan-bacnet
-   ```
+You can install this module via npm or through the Node-RED interface.
 
-2. Create a symbolic link with `npm link`:
-   ```bash
-   npm link
-   ```
+### Install via npm
+Run the following command in your Node-RED user directory (typically `~/.node-red`):
+```bash
+npm install @montagny/node-red-contrib-lorawan-bacnet
+```
 
-3. Link it to your Node-RED user directory:
-   ```bash
-   cd ~/.node-red
-   npm link node-red-contrib-lorawan-bacnet
-   ```
+### Install via Node-RED Interface
+1. Open the Node-RED interface ([http://localhost:1880](http://localhost:1880)).
+2. Go to the "Manage Palette" menu.
+3. Search for `@montagny/node-red-contrib-lorawan-bacnet` in the "Install" tab.
+4. Click "Install" to add the module to your Node-RED instance.
 
-4. Restart Node-RED:
-   ```bash
-   node-red
-   ```
+---
 
-5. Open the Node-RED interface ([http://localhost:1880](http://localhost:1880)).
+## License
+
+This project is licensed under the MIT. See the [LICENSE](./LICENSE) file for details.
