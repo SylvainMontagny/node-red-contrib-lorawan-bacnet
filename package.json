@@ -1,22 +1,29 @@
 {
-  "name": "node-red-contrib-lorawan-bacnet",
-  "version": "1.0.0",
-  "description": "LoRaBAC nodes packages for Node-RED",
-  "main": "index.js",
+  "name": "@montagny/node-red-contrib-lorawan-bacnet",
+  "version": "0.0.1",
+  "description": "Provides custom Node-RED nodes for integrating LoRaWAN devices with BACnet systems",
   "keywords": [
     "LoRaWAN",
     "LoRaBAC",
-    "Node-RED"
+    "node-red",
+    "BACnet",
+    "IoT"
   ],
-  "author": "Elias CUZEAU",
   "license": "MIT",
+  "contributors": [
+    {
+      "name": "Elias CUZEAU",
+      "email": "elias.cuzeau@ikmail.com"
+    }
+  ],
   "node-red": {
     "nodes": {
       "create-device-object": "nodes/create-device-object/create-device-object.js",
       "device-configuration": "nodes/device-configuration/device-configuration.js"
     }
   },
-  "dependencies": {
-    "node-red-contrib-lorawan-bacnet": "file:"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SylvainMontagny/node-red-contrib-lorawan-bacnet.git"
   }
 }
