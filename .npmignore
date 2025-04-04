@@ -1,0 +1,23 @@
+# Exclude node_modules directory
+node_modules/
+
+# Exclude Git-related files
+.git/
+.gitignore
+
+# Exclude editor configuration files
+.vscode/
+*.swp
+
+# Exclude test files and directories
+tests/
+__tests__/
+*.test.js
+
+# Exclude build artifacts or temporary files
+*.log
+*.tmp
+.DS_Store
+
+# Exclude other unnecessary files
+.env
