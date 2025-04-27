@@ -9,6 +9,8 @@
       networkServer: { value: "tts", required: true },
       grpcApiKey: { value: "", required: false },
       protocol: { value: "restAPIBacnet", required: true },
+      model: { value: "distechControlsV2", required: false },
+      class: { value: "A", required: true },
       bacnetLogin: { value: "", required: false },
       bacnetPassword: { value: "", required: false },
       // Devices
@@ -30,15 +32,20 @@
       var chirpstackGrpcApiKey = $("#node-input-grpcApiKey");
 
       var protocolSelect = $("#node-input-protocol");
-      var bacnetLogin = $("#bacnet-login");
+      var modelSelect = $("#rest-api-bacnet-model");
+      var bacnetLogin = $("#bacnet-settings");
       var bacnetLoginInput = $("#node-input-bacnetLogin");
       var bacnetPasswordInput = $("#node-input-bacnetPassword");
+      var classSelect = $("#node-input-class");
 
       // Restore the configuration
       if (node.ipAddress) ipAddressInput.val(node.ipAddress);
       if (node.networkServer) networkServerSelect.val(node.networkServer);
       if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
       if (node.protocol) protocolSelect.val(node.protocol);
+      if (node.model) modelSelect.val(node.model);
+      if (node.class) classSelect.val();
+
       if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
       if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
 
@@ -79,11 +86,11 @@
         let device = {
           deviceName: `device-${node.deviceCount}`,
           identity: {
-            maxDeviceNum: 99
+            maxDevNum: 99
           },
           controller: {
             debug: ["all"],
-            model: "distechControlsV2",
+            model: modelSelect.val(),
             protocol: protocolSelect.val(),
             ipAddress: ipAddressInput.val(),
             login: bacnetLoginInput.val(),
@@ -93,6 +100,7 @@
             networkServer: networkServerSelect.val(),
             downlinkPort: 30,
             flushDownlinkQueue: true,
+            class: classSelect.val(),
             chirpstack: {
               grpcApiKey: chirpstackGrpcApiKey.val()
             },
@@ -105,8 +113,10 @@
             }
           },
           bacnet: {
-            offset: 0,
-            instanceRange: 10,
+            offsetAV: 0,
+            offsetBV: 0,
+            instanceRangeAV: 10,
+            instanceRangeBV: 10,
             objectsCount: 1,
             objects: [] //store in array then convert into desired format into the "on input" function
           },
@@ -126,7 +136,10 @@
       function createNewObject(device) {
         let object = {
           objectName: `object-${device.bacnet.objectsCount}`,
+          lorawanPayloadName: '',
           dataDirection: "uplink",
+          assignementMode: "auto",
+          instanceNum: 0,
           objectType: "analogValue",
           value: null
         };
@@ -240,13 +253,14 @@
               class: "primary",
               click: function () {
                 // Save the device configuration in the device list
-                device.deviceName = $("#node-input-deviceName").val();
-                device.identity.maxDeviceNum = Number($("#node-input-maxDeviceNum").val());
+                device.identity.maxDevNum = Number($("#node-input-max-dev-num").val());
                 device.controller.debug = [$("#node-input-debug").val()];
                 device.lorawan.flushDownlinkQueue = ($("#node-input-flush-downlink-queue").val() === "true") ? true : false; // Boolean conversion
                 device.lorawan.downlinkPort = Number($("#node-input-downlinkPort").val());
-                device.bacnet.offset = Number($("#node-input-offset").val());
-                device.bacnet.instanceRange = Number($("#node-input-instanceRange").val());
+                device.bacnet.offsetAV = Number($("#node-input-offset-av").val());
+                device.bacnet.offsetBV = Number($("#node-input-offset-bv").val());
+                device.bacnet.instanceRangeAV = Number($("#node-input-instance-range-av").val());
+                device.bacnet.instanceRangeBV = Number($("#node-input-instance-range-bv").val());
 
                 device.lorawan.actility.driver.pId = $("#node-input-pId").val();
                 device.lorawan.actility.driver.mId = $("#node-input-mId").val();
@@ -265,13 +279,16 @@
             trayBody.html($("#device-tray-template").html());
 
             $("#node-input-deviceName").val(device.deviceName);
-            $("#node-input-maxDeviceNum").val(device.identity.maxDeviceNum);
+            $("#node-input-max-dev-num").val(device.identity.maxDevNum);
+            $("#node-device-config-title").text(` ${device.deviceName} Configuration`);
             $("#node-input-debug").val(device.controller.debug);
             console.log(device.lorawan);
             $("#node-input-flush-downlink-queue").val(String(device.lorawan.flushDownlinkQueue));
             $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
-            $("#node-input-offset").val(device.bacnet.offset);
-            $("#node-input-instanceRange").val(device.bacnet.instanceRange);
+            $("#node-input-offset-av").val(device.bacnet.offsetAV);
+            $("#node-input-offset-bv").val(device.bacnet.offsetBV);
+            $("#node-input-instance-range-av").val(device.bacnet.instanceRangeAV);
+            $("#node-input-instance-range-bv").val(device.bacnet.instanceRangeBV);
 
             $("#node-input-pId").val(device.lorawan.actility.driver.pId);
             $("#node-input-mId").val(device.lorawan.actility.driver.mId);
@@ -314,9 +331,12 @@
               text: "Save",
               class: "primary",
               click: function () {
-                object.objectName = $("#node-input-object-name").val();
+                object.lorawanPayloadName = $("#node-input-lorawan-payload-name").val();
                 object.dataDirection = $("#node-input-data-direction").val();
                 object.objectType = $("#node-input-object-type").val();
+                object.instanceNum = Number($("#node-input-instance-num").val());
+                //object.downlinkStrategies = Number($("#node-input-downlink-strategies").val());
+                object.assignementMode = $("#node-input-object-mode").val();
 
                 if(object.objectType === "analogValue") {
                   object.value = Number($("#node-input-analog-value").val());
@@ -336,8 +356,14 @@
             let trayBody = tray.find('.red-ui-tray-body');
             trayBody.html($("#object-tray-template").html());
 
-            $("#node-input-object-name").val(object.objectName);
+            $("#node-object-config-title").text(`${object.objectName} Configuration`);
+
+            $("#node-input-lorawan-payload-name").val(object.lorawanPayloadName);
             $("#node-input-data-direction").val(object.dataDirection);
+            $("#node-input-instance-num").val(object.instanceNum);
+            $("#node-input-object-mode").val(object.assignementMode);
+            //$("#node-input-downlink-strategies").val(object.downlinkStrategies);
+
             let objectTypeSelect = $("#node-input-object-type");
             objectTypeSelect.val(object.objectType);
 
@@ -382,11 +408,14 @@
       this.protocol = $("#node-input-protocol").val();
       this.bacnetLogin = $("#node-input-bacnetLogin").val();
       this.bacnetPassword = $("#node-input-bacnetPassword").val();
+      this.model = $("#rest-api-bacnet-model").val();
+      this.class = $("#node-input-class").val();
 
       // Update device list 
       this.deviceList.forEach(function (device) {
         device.controller.ipAddress = $("#node-input-ipAddress").val();
         device.lorawan.networkServer = $("#node-input-networkServer").val();
+        device.lorawan.class = $("#node-input-class").val();
         device.controller.protocol = $("#node-input-protocol").val();
 
         device.controller.login = $("#node-input-bacnetLogin").val();
@@ -405,7 +434,7 @@
 
 <script type="text/html" data-template-name="device-configuration">
   <div>
-    <form id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+    <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
       <div class="form-row">
         <h3><i class="fa fa-cog"></i> Global Configuration</h3>
       </div>
@@ -420,7 +449,7 @@
             <i class="fa fa-signal"></i> Network Server
         </label>
         <select id="node-input-networkServer">
-            <option value="tts">TTS</option>
+            <option value="tts">The Things Stack</option>
             <option value="chirpstack">Chirpstack</option>
             <option value="actility">Actility</option>
         </select>
@@ -436,9 +465,20 @@
             <!--
               <option value="restAPIModbus">REST API Modbus</option>
               <option value="modbus">Modbus</option>
-            <option value="restAPIModbus">REST API Modbus</option>
-            <option value="modbus">Modbus</option>
+              <option value="restAPIModbus">REST API Modbus</option>
+              <option value="modbus">Modbus</option>
             -->
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-class" style="width: 120px">
+          <i class="fa fa-tag"></i> Class
+        </label>
+        <select id="node-input-class">
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
         </select>
       </div>
 
@@ -452,7 +492,15 @@
         </div>
       </div>
 
-      <div id="bacnet-login">
+      <div id="bacnet-settings">
+        <div class="form-row">
+          <label for="rest-api-bacnet-model" style="width: 120px">
+            <i class="fa fa-bolt"></i> Model
+          </label>
+          <select id="rest-api-bacnet-model">
+              <option value="distechControlsV2">Distech Control v2</option>
+          </select>
+        </div>
         <div class="form-row">
           <h3><i class="fa fa-cog"></i> Rest API BACnet Login</h3>
         </div>
@@ -478,20 +526,15 @@
 
 <script type="text/html" id="device-tray-template">
   <div>
-    <form id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+    <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
 
       <div class="form-row">
-        <h3><i class="fa fa-cog"></i> Device Configuration</h3>
+        <h3><i class="fa fa-cog"></i><span id="node-device-config-title"> Device Configuration</span></h3>
       </div>
 
       <div class="form-row">
-        <label for="node-input-deviceName" style="width: 120px"><i class="fa fa-tag"></i> Device name</label>
-        <input type="text" id="node-input-deviceName"/>
-      </div>
-
-      <div class="form-row">
-        <label for="node-input-maxDeviceNum" style="width: auto"><i class="fa fa-arrow-up"></i> Maximum Device Number</label>
-        <input type="number" id="node-input-maxDeviceNum" style="width: 80px; margin-left: 10px;"/>
+        <label for="node-input-mmax-dev-num" style="width: auto"><i class="fa fa-arrow-up"></i> Maximum Device Number</label>
+        <input type="number" id="node-input-max-dev-num" style="width: 80px; margin-left: 10px;"/>
       </div>
 
       <div class="form-row">
@@ -544,15 +587,23 @@
       </div>
 
       <div class="form-row">
-        <h3><i class="fa fa-th-list"></i> Object list</h3>
+        <h3><i class="fa fa-th-list"></i> BACnet Object list</h3>
       </div>
       <div class="form-row">
-        <label for="node-input-offset" style="width: 120px"><i class="fa fa-arrows-h"></i> Offset</label>
-        <input type="number" id="node-input-offset" style="width: 80px"/>
+        <label for="node-input-offset-av" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset AV</label>
+        <input type="number" id="node-input-offset-av" style="width: 80px"/>
       </div>
       <div class="form-row">
-        <label for="node-input-instanceRange" style="width: 120px"><i class="fa fa-arrows"></i> Instance Range</label>
-        <input type="number" id="node-input-instanceRange" style="width: 80px"/>
+        <label for="node-input-offset-bv" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset BV</label>
+        <input type="number" id="node-input-offset-bv" style="width: 80px"/>
+      </div>
+      <div class="form-row">
+        <label for="node-input-instance-range-av" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range AV</label>
+        <input type="number" id="node-input-instance-range-av" style="width: 80px"/>
+      </div>
+      <div class="form-row">
+        <label for="node-input-instance-range-bv" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range BV</label>
+        <input type="number" id="node-input-instance-range-bv" style="width: 80px"/>
       </div>
 
       <div id="node-input-object-list-container"></div>
@@ -569,47 +620,76 @@
 
 <script type="text/html" id="object-tray-template">
   <div>
-    <form id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+    <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
 
       <div class="form-row">
-        <h3><i class="fa fa-cog"></i> Object Configuration</h3>
+        <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Object Configuration</span></h3>
       </div>
 
       <div class="form-row">
-        <label for="node-input-object-name" style="width: 120px"><i class="fa fa-tag"></i> Object name</label>
-        <input type="text" id="node-input-object-name"/>
+        <label for="node-input-lorawan-payload-name" style="width: 180px"><i class="fa fa-tag"></i> LoRaWAN Payload name</label>
+        <input type="text" id="node-input-lorawan-payload-name" style="width: 265px"/>
       </div>
 
       <div class="form-row">
-        <label for="node-input-data-direction" style="width: 120px">
+        <label for="node-input-instance-num" style="width: 140px"><i class="fa fa-hashtag"></i> Instance num</label>
+        <input type="number" id="node-input-instance-num" style="width: 130px"/>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-data-direction" style="width: 140px">
           <i class="fa fa-rss"></i> Data direction
         </label>
-        <select id="node-input-data-direction">
+        <select id="node-input-data-direction" style="width: 130px">
             <option value="uplink">Uplink</option>
             <option value="downlink">Downlink</option>
         </select>
       </div>
+      <div class="form-row">
+        <label for="node-input-object-mode" style="width: 140px">
+          <i class="fa fa-toggle-up"></i> Object mode
+        </label>
+        <select id="node-input-object-mode" style="width: 130px">
+            <option value="auto">Auto</option>
+            <option value="manual">Manual</option>
+        </select>
+      </div>
 
       <div class="form-row">
-        <label for="node-input-object-type" style="width: 120px">
+        <label for="node-input-downlink-strategies" style="width: 140px">
+          <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
+        </label>
+        <select id="node-input-downlink-strategies" style="width: 300px">
+            <option value="0">On compare to a LoRaWAN uplink value</option>
+            <option value="1">On change of a BACnet object value</option>
+            <option value="2">No downlink</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Value configuration</span></h3>
+      </div>
+
+      <div class="form-row">
+        <label for="node-input-object-type" style="width: 140px">
           <i class="fa fa-asterisk"></i> Value type
         </label>
-        <select id="node-input-object-type">
+        <select id="node-input-object-type" style="width: 130px">
             <option value="analogValue">Analog value</option>
             <option value="binaryValue">Binary value</option>
         </select>
       </div>
 
       <div class="form-row" id="node-analog-value-container">
-        <label for="node-input-analog-value" style="width: 120px"><i class="fa fa-hashtag"></i> Analog Value</label>
-        <input type="number" id="node-input-analog-value"/>
+        <label for="node-input-analog-value" style="width: 140px"><i class="fa fa-hashtag"></i> Value</label>
+        <input type="number" id="node-input-analog-value" style="width: 130px"/>
       </div>
 
       <div class="form-row" id="node-binary-value-container">
-        <label for="node-input-binary-value" style="width: 120px">
-          <i class="fa fa-hashtag"></i> Binary Value
+        <label for="node-input-binary-value" style="width: 140px">
+          <i class="fa fa-hashtag"></i> Value
         </label>
-        <select id="node-input-binary-value">
+        <select id="node-input-binary-value" style="width: 130px">
             <option value="0">0</option>
             <option value="1">1</option>
         </select>

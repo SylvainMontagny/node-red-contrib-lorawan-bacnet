@@ -25,10 +25,9 @@ module.exports = function (RED) {
                 device.bacnet.objects = {};
                 for (let i = 0; i < objectsArray.length; i++) {
                     obj = objectsArray[i];
-                    obj.instanceNum = i;
-                    obj.lorawanPayloadName = obj.objectName;
+                    let objectName = obj.objectName;
                     delete obj.objectName;
-                    device.bacnet.objects[obj.lorawanPayloadName] = obj;
+                    device.bacnet.objects[objectName] = obj;
                   }
             });
             
@@ -41,6 +40,7 @@ module.exports = function (RED) {
                 }
             } else {
                 for (let device in deviceList) {
+                    delete deviceList[device].controller.model;
                     delete deviceList[device].controller.login;
                     delete deviceList[device].controller.password;
                 }
