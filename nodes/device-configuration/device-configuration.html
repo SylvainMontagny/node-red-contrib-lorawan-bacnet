@@ -1,435 +1,461 @@
 <script type="text/javascript">
-  RED.nodes.registerType("device-configuration", {
-    category: "LoRaBAC",
-    color: "#00aff0",
-    icon: "node-red/cog.svg",
-    defaults: {
-      // Saved/Default Configuration
-      ipAddress: { value: "", required: false },
-      networkServer: { value: "tts", required: true },
-      grpcApiKey: { value: "", required: false },
-      protocol: { value: "restAPIBacnet", required: true },
-      model: { value: "distechControlsV2", required: false },
-      class: { value: "A", required: true },
-      bacnetLogin: { value: "", required: false },
-      bacnetPassword: { value: "", required: false },
-      // Devices
-      deviceCount: { value: 1, required: true },
-      deviceList: { value: [], required: true }
-    },
-    inputs: 1,
-    outputs: 1,
-    label: function () {
-      return "Device Configuration";
-    },
-    oneditprepare: function () {
-      var node = this;
+RED.nodes.registerType("device-configuration", {
+category: "LoRaBAC",
+color: "#00aff0",
+icon: "node-red/cog.svg",
+defaults: {
+  // Saved/Default Configuration
+  ipAddress: { value: "", required: false },
+  networkServer: { value: "tts", required: true },
+  grpcApiKey: { value: "", required: false },
+  protocol: { value: "restAPIBacnet", required: true },
+  model: { value: "distechControlsV2", required: false },
+  class: { value: "A", required: true },
+  bacnetLogin: { value: "", required: false },
+  bacnetPassword: { value: "", required: false },
+  // Devices
+  deviceCount: { value: 1, required: true },
+  deviceList: { value: [], required: true }
+},
+inputs: 1,
+outputs: 1,
+label: function () {
+  return "Device Configuration";
+},
+oneditprepare: function () {
+  var node = this;
 
-      // Input elements
-      var ipAddressInput = $("#node-input-ipAddress");
-      var networkServerSelect = $("#node-input-networkServer");
-      var chirpstackDiv = $("#chirpstack-config");
-      var chirpstackGrpcApiKey = $("#node-input-grpcApiKey");
+  // Input elements
+  var ipAddressInput = $("#node-input-ipAddress");
+  var networkServerSelect = $("#node-input-networkServer");
+  var chirpstackDiv = $("#chirpstack-config");
+  var chirpstackGrpcApiKey = $("#node-input-grpcApiKey");
 
-      var protocolSelect = $("#node-input-protocol");
-      var modelSelect = $("#rest-api-bacnet-model");
-      var bacnetLogin = $("#bacnet-settings");
-      var bacnetLoginInput = $("#node-input-bacnetLogin");
-      var bacnetPasswordInput = $("#node-input-bacnetPassword");
-      var classSelect = $("#node-input-class");
+  var protocolSelect = $("#node-input-protocol");
+  var modelSelect = $("#rest-api-bacnet-model");
+  var bacnetLogin = $("#bacnet-settings");
+  var bacnetLoginInput = $("#node-input-bacnetLogin");
+  var bacnetPasswordInput = $("#node-input-bacnetPassword");
+  var classSelect = $("#node-input-class");
 
-      // Restore the configuration
-      if (node.ipAddress) ipAddressInput.val(node.ipAddress);
-      if (node.networkServer) networkServerSelect.val(node.networkServer);
-      if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
-      if (node.protocol) protocolSelect.val(node.protocol);
-      if (node.model) modelSelect.val(node.model);
-      if (node.class) classSelect.val();
+  // Restore the configuration
+  if (node.ipAddress) ipAddressInput.val(node.ipAddress);
+  if (node.networkServer) networkServerSelect.val(node.networkServer);
+  if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
+  if (node.protocol) protocolSelect.val(node.protocol);
+  if (node.model) modelSelect.val(node.model);
+  if (node.class) classSelect.val();
 
-      if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
-      if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
+  if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
+  if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
 
-      // Toggle configurations inputs visibility  
-      function toggleChirpstackConfig() {
-        if (networkServerSelect.val() === "chirpstack") {
-          chirpstackDiv.show();
-        } else {
-          chirpstackDiv.hide();
-        }
-      }
-
-      function toggleBacnetLoginConfig() {
-        if (protocolSelect.val() === "restAPIBacnet") {
-          bacnetLogin.show();
-        } else {
-          bacnetLogin.hide();
-        }
-      }
-
-      toggleChirpstackConfig();
-      toggleBacnetLoginConfig();
-
-      networkServerSelect.on("change", function(){
-        node.networkServer = networkServerSelect.val();
-        toggleChirpstackConfig();
-      });
-
-      protocolSelect.on("change", function(){
-        node.protocol = protocolSelect.val();
-        toggleBacnetLoginConfig();
-      });
-
-      /**
-       * Create a device object and add it to the device list
-       */
-      function createNewDevice() {
-        let device = {
-          deviceName: `device-${node.deviceCount}`,
-          identity: {
-            maxDevNum: 99
-          },
-          controller: {
-            debug: ["all"],
-            model: modelSelect.val(),
-            protocol: protocolSelect.val(),
-            ipAddress: ipAddressInput.val(),
-            login: bacnetLoginInput.val(),
-            password: bacnetPasswordInput.val(),
-          },
-          lorawan: {
-            networkServer: networkServerSelect.val(),
-            downlinkPort: 30,
-            flushDownlinkQueue: true,
-            class: classSelect.val(),
-            chirpstack: {
-              grpcApiKey: chirpstackGrpcApiKey.val()
-            },
-            actility: {
-              driver: {
-                pId: "",
-                mId: "",
-                ver: ""
-              }
-            }
-          },
-          bacnet: {
-            offsetAV: 0,
-            offsetBV: 0,
-            instanceRangeAV: 10,
-            instanceRangeBV: 10,
-            objectsCount: 1,
-            objects: [] //store in array then convert into desired format into the "on input" function
-          },
-          mqtt: {
-            topicDownlink: {
-
-            }
-          }
-        };
-        node.deviceList.push(device);
-        node.deviceCount++;
-      }
-
-      /**
-       * Create a new object for a device and adds it to the list of objects of the device
-       */
-      function createNewObject(device) {
-        let object = {
-          objectName: `object-${device.bacnet.objectsCount}`,
-          lorawanPayloadName: '',
-          dataDirection: "uplink",
-          assignementMode: "auto",
-          instanceNum: 0,
-          objectType: "analogValue",
-          value: null
-        };
-        device.bacnet.objectsCount++;
-        device.bacnet.objects.push(object);
-      }
-
-
-      /**
-       * Update device list on the main tray
-       * and add event listeners to the edit and delete buttons
-       */
-      function updateDeviceList() {
-        $("#node-input-device-list-container").empty();
-        node.deviceList.forEach(function (device, index) {
-          var row = $("<div>").addClass("form-row").appendTo("#node-input-device-list-container");
-
-          // Device name input
-          let deviceNameInput = $("<input>")
-            .attr({ type: "text", value: device.deviceName, class: "node-input-list-item" })
-            .appendTo(row);
-
-          // Edit button
-          $("<button>")
-            .html(`<i class="fa fa-pencil"></i>`)
-            .css("margin-left", "10px")
-            .addClass("red-ui-button")
-            .click(function () {
-              device.deviceName = deviceNameInput.val();
-              showDeviceTray(device);
-            })
-            .appendTo(row);
-
-          // Delete button
-          $("<button>")
-            .css("margin-left", "10px")
-            .html(`<i class="fa fa-trash"></i>`)
-            .addClass("red-ui-button")
-            .click(function () {
-              node.deviceList.splice(index, 1);
-              updateDeviceList();
-            })
-            .appendTo(row);
-        });
-      }
-
-      // Add device button
-      $("#node-input-addDevice")
-        .addClass("editor-button")
-        .click(function () {
-          createNewDevice();
-          updateDeviceList();
-        });
-
-      updateDeviceList();
-
-      /**
-       * Update device list on the main tray
-       * and add event listeners to the edit and delete buttons
-       */
-      function updateObjectList(device) {
-        $("#node-input-object-list-container").empty();
-        device.bacnet.objects.forEach(function (object, index) {
-          var row = $("<div>").addClass("form-row").appendTo("#node-input-object-list-container");
-
-          // Object name input
-          let objectNameInput = $("<input>")
-            .attr({ type: "text", value: object.objectName, class: "node-input-list-item" })
-            .appendTo(row);
-
-          // Edit button
-          $("<button>")
-            .html(`<i class="fa fa-pencil"></i>`)
-            .css("margin-left", "10px")
-            .addClass("red-ui-button")
-            .click(function () {
-              object.objectName = objectNameInput.val();
-              showObjectTray(device, object);
-            })
-            .appendTo(row);
-
-          // Delete button
-          $("<button>")
-            .css("margin-left", "10px")
-            .html(`<i class="fa fa-trash"></i>`)
-            .addClass("red-ui-button")
-            .click(function () {
-              device.bacnet.objects.splice(index, 1);
-              updateObjectList(device);
-            })
-            .appendTo(row);
-        });
-      }
-
-      /**
-       * Open a new tray to configure a device
-       */
-      function showDeviceTray(device) {
-        RED.tray.show({
-          title: "Configure device",
-          width: 400,
-          buttons: [
-            {
-              text: "Cancel",
-              click: function () {
-                RED.tray.close();
-              }
-            },
-            {
-              text: "Save",
-              class: "primary",
-              click: function () {
-                // Save the device configuration in the device list
-                device.identity.maxDevNum = Number($("#node-input-max-dev-num").val());
-                device.controller.debug = [$("#node-input-debug").val()];
-                device.lorawan.flushDownlinkQueue = ($("#node-input-flush-downlink-queue").val() === "true") ? true : false; // Boolean conversion
-                device.lorawan.downlinkPort = Number($("#node-input-downlinkPort").val());
-                device.bacnet.offsetAV = Number($("#node-input-offset-av").val());
-                device.bacnet.offsetBV = Number($("#node-input-offset-bv").val());
-                device.bacnet.instanceRangeAV = Number($("#node-input-instance-range-av").val());
-                device.bacnet.instanceRangeBV = Number($("#node-input-instance-range-bv").val());
-
-                device.lorawan.actility.driver.pId = $("#node-input-pId").val();
-                device.lorawan.actility.driver.mId = $("#node-input-mId").val();
-                device.lorawan.actility.driver.ver = $("#node-input-ver").val();
-
-                RED.tray.close();
-                //Timeout to allow the tray to close before updating the list
-                setTimeout(() => {
-                  updateDeviceList();
-                }, 500);
-              }
-            }
-          ],
-          open: function (tray) {
-            let trayBody = tray.find('.red-ui-tray-body');
-            trayBody.html($("#device-tray-template").html());
-
-            $("#node-input-deviceName").val(device.deviceName);
-            $("#node-input-max-dev-num").val(device.identity.maxDevNum);
-            $("#node-device-config-title").text(` ${device.deviceName} Configuration`);
-            $("#node-input-debug").val(device.controller.debug);
-            console.log(device.lorawan);
-            $("#node-input-flush-downlink-queue").val(String(device.lorawan.flushDownlinkQueue));
-            $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
-            $("#node-input-offset-av").val(device.bacnet.offsetAV);
-            $("#node-input-offset-bv").val(device.bacnet.offsetBV);
-            $("#node-input-instance-range-av").val(device.bacnet.instanceRangeAV);
-            $("#node-input-instance-range-bv").val(device.bacnet.instanceRangeBV);
-
-            $("#node-input-pId").val(device.lorawan.actility.driver.pId);
-            $("#node-input-mId").val(device.lorawan.actility.driver.mId);
-            $("#node-input-ver").val(device.lorawan.actility.driver.ver);
-
-            let actilityConfiguration = $("#actility-configuration");
-            if (node.networkServer === "actility") {
-              actilityConfiguration.show();
-            } else {
-              actilityConfiguration.hide();
-            }
-
-            let addObjectBtn = $("#add-object-btn");
-
-            addObjectBtn.on("click", function () {
-              createNewObject(device);
-              updateObjectList(device);
-            })
-
-            updateObjectList(device);
-          }
-        });
-      }
-
-      /**
-       * Open a new tray to configure an object
-       */
-      function showObjectTray(device, object) {
-        RED.tray.show({
-          title: "Configure object",
-          width: 400,
-          buttons: [
-            {
-              text: "Cancel",
-              click: function () {
-                RED.tray.close();
-              }
-            },
-            {
-              text: "Save",
-              class: "primary",
-              click: function () {
-                object.lorawanPayloadName = $("#node-input-lorawan-payload-name").val();
-                object.dataDirection = $("#node-input-data-direction").val();
-                object.objectType = $("#node-input-object-type").val();
-                object.instanceNum = Number($("#node-input-instance-num").val());
-                //object.downlinkStrategies = Number($("#node-input-downlink-strategies").val());
-                object.assignementMode = $("#node-input-object-mode").val();
-
-                if(object.objectType === "analogValue") {
-                  object.value = Number($("#node-input-analog-value").val());
-                } else if (object.objectType === "binaryValue") {
-                  object.value = Number($("#node-input-binary-value").val());
-                }
-
-                RED.tray.close();
-                //Timeout to allow the tray to close before updating the list
-                setTimeout(() => {
-                  updateObjectList(device);
-                }, 500);
-              }
-            }
-          ],
-          open: function (tray) {
-            let trayBody = tray.find('.red-ui-tray-body');
-            trayBody.html($("#object-tray-template").html());
-
-            $("#node-object-config-title").text(`${object.objectName} Configuration`);
-
-            $("#node-input-lorawan-payload-name").val(object.lorawanPayloadName);
-            $("#node-input-data-direction").val(object.dataDirection);
-            $("#node-input-instance-num").val(object.instanceNum);
-            $("#node-input-object-mode").val(object.assignementMode);
-            //$("#node-input-downlink-strategies").val(object.downlinkStrategies);
-
-            let objectTypeSelect = $("#node-input-object-type");
-            objectTypeSelect.val(object.objectType);
-
-            let analogContainer = $("#node-analog-value-container");
-            let binaryContainer = $("#node-binary-value-container");
-
-            let analogDefaultValue = null;
-            let binaryDefaultValue = 0;
-
-            function toggleValueField() {
-              if (objectTypeSelect.val() === "analogValue") {
-                analogContainer.show();
-                binaryContainer.hide();
-                $("#node-input-analog-value").val(analogDefaultValue);
-              } else if (objectTypeSelect.val() === "binaryValue") {
-                analogContainer.hide();
-                binaryContainer.show();
-                $("#node-input-binary-value").val(binaryDefaultValue);
-              }
-            }
-
-            objectTypeSelect.on("change", function () {
-              toggleValueField();
-            });
-
-            toggleValueField();
-
-            if(object.objectType === "analogValue") {
-              $("#node-input-analog-value").val(object.value);
-            } else if (object.objectType === "binaryValue") {
-              $("#node-input-binary-value").val(object.value);
-            }
-          }
-        });
-      }
-    },
-    oneditsave: function () {
-      // Save the configuration
-      this.ipAddress = $("#node-input-ipAddress").val();
-      this.networkServer = $("#node-input-networkServer").val();
-      this.grpcApiKey = $("#node-input-grpcApiKey").val();
-      this.protocol = $("#node-input-protocol").val();
-      this.bacnetLogin = $("#node-input-bacnetLogin").val();
-      this.bacnetPassword = $("#node-input-bacnetPassword").val();
-      this.model = $("#rest-api-bacnet-model").val();
-      this.class = $("#node-input-class").val();
-
-      // Update device list 
-      this.deviceList.forEach(function (device) {
-        device.controller.ipAddress = $("#node-input-ipAddress").val();
-        device.lorawan.networkServer = $("#node-input-networkServer").val();
-        device.lorawan.class = $("#node-input-class").val();
-        device.controller.protocol = $("#node-input-protocol").val();
-
-        device.controller.login = $("#node-input-bacnetLogin").val();
-        device.controller.password = $("#node-input-bacnetPassword").val();
-
-        device.lorawan.chirpstack.grpcApiKey = $("#node-input-grpcApiKey").val();
-      });
-
-      console.log(this.deviceList);
-      this.changed = true;
-      RED.nodes.dirty(this.id);
-      RED.notify("Device list saved", "success");
+  // Toggle configurations inputs visibility  
+  function toggleChirpstackConfig() {
+    if (networkServerSelect.val() === "chirpstack") {
+      chirpstackDiv.show();
+    } else {
+      chirpstackDiv.hide();
     }
+  }
+
+  function toggleBacnetLoginConfig() {
+    if (protocolSelect.val() === "restAPIBacnet") {
+      bacnetLogin.show();
+    } else {
+      bacnetLogin.hide();
+    }
+  }
+
+  toggleChirpstackConfig();
+  toggleBacnetLoginConfig();
+
+  networkServerSelect.on("change", function(){
+    node.networkServer = networkServerSelect.val();
+    toggleChirpstackConfig();
   });
+
+  protocolSelect.on("change", function(){
+    node.protocol = protocolSelect.val();
+    toggleBacnetLoginConfig();
+  });
+
+  /**
+   * Create a device object and add it to the device list
+   */
+  function createNewDevice() {
+    let device = {
+      deviceName: `device-${node.deviceCount}`,
+      identity: {
+        maxDevNum: 99
+      },
+      controller: {
+        debug: ["all"],
+        model: modelSelect.val(),
+        protocol: protocolSelect.val(),
+        ipAddress: ipAddressInput.val(),
+        login: bacnetLoginInput.val(),
+        password: bacnetPasswordInput.val(),
+      },
+      lorawan: {
+        networkServer: networkServerSelect.val(),
+        downlinkPort: 30,
+        flushDownlinkQueue: true,
+        class: classSelect.val(),
+        chirpstack: {
+          grpcApiKey: chirpstackGrpcApiKey.val()
+        },
+        actility: {
+          driver: {
+            pId: "",
+            mId: "",
+            ver: ""
+          }
+        }
+      },
+      bacnet: {
+        offsetAV: 0,
+        offsetBV: 0,
+        instanceRangeAV: 10,
+        instanceRangeBV: 10,
+        objectsCount: 1,
+        objects: [] //store in array then convert into desired format into the "on input" function
+      },
+      mqtt: {
+        topicDownlink: {
+
+        }
+      }
+    };
+    node.deviceList.push(device);
+    node.deviceCount++;
+  }
+
+  /**
+   * Create a new object for a device and adds it to the list of objects of the device
+   */
+  function createNewObject(device) {
+    let object = {
+      objectName: `object-${device.bacnet.objectsCount}`,
+      lorawanPayloadName: '',
+      dataDirection: "uplink",
+      assignementMode: "auto",
+      instanceNum: 0,
+      objectType: "analogValue",
+      value: null
+    };
+    device.bacnet.objectsCount++;
+    device.bacnet.objects.push(object);
+  }
+
+
+  /**
+   * Update device list on the main tray
+   * and add event listeners to the edit and delete buttons
+   */
+  function updateDeviceList() {
+    $("#node-input-device-list-container").empty();
+    node.deviceList.forEach(function (device, index) {
+      var row = $("<div>").addClass("form-row").appendTo("#node-input-device-list-container");
+
+      // Device name input
+      let deviceNameInput = $("<input>")
+        .attr({ type: "text", value: device.deviceName, class: "node-input-list-item" })
+        .appendTo(row);
+
+      // Edit button
+      $("<button>")
+        .html(`<i class="fa fa-pencil"></i>`)
+        .css("margin-left", "10px")
+        .addClass("red-ui-button")
+        .click(function () {
+          device.deviceName = deviceNameInput.val();
+          showDeviceTray(device);
+        })
+        .appendTo(row);
+
+      // Delete button
+      $("<button>")
+        .css("margin-left", "10px")
+        .html(`<i class="fa fa-trash"></i>`)
+        .addClass("red-ui-button")
+        .click(function () {
+          node.deviceList.splice(index, 1);
+          updateDeviceList();
+        })
+        .appendTo(row);
+    });
+  }
+
+  // Add device button
+  $("#node-input-addDevice")
+    .addClass("editor-button")
+    .click(function () {
+      createNewDevice();
+      updateDeviceList();
+    });
+
+  updateDeviceList();
+
+// ==================================================
+// =============== DEVICE TRAY ======================
+// ==================================================
+
+  /**
+   * Open a new tray to configure a device
+   */
+  function showDeviceTray(device) {
+    RED.tray.show({
+      title: "Configure device",
+      width: 400,
+      buttons: [
+        {
+          text: "Cancel",
+          click: function () {
+            RED.tray.close();
+          }
+        },
+        {
+          text: "Save",
+          class: "primary",
+          click: function () {
+            // Save the device configuration in the device list
+            device.identity.maxDevNum = Number($("#node-input-max-dev-num").val());
+            device.controller.debug = [$("#node-input-debug").val()];
+            device.lorawan.flushDownlinkQueue = ($("#node-input-flush-downlink-queue").val() === "true") ? true : false; // Boolean conversion
+            device.lorawan.downlinkPort = Number($("#node-input-downlinkPort").val());
+            device.bacnet.offsetAV = Number($("#node-input-offset-av").val());
+            device.bacnet.offsetBV = Number($("#node-input-offset-bv").val());
+            device.bacnet.instanceRangeAV = Number($("#node-input-instance-range-av").val());
+            device.bacnet.instanceRangeBV = Number($("#node-input-instance-range-bv").val());
+
+            device.lorawan.actility.driver.pId = $("#node-input-pId").val();
+            device.lorawan.actility.driver.mId = $("#node-input-mId").val();
+            device.lorawan.actility.driver.ver = $("#node-input-ver").val();
+
+            RED.tray.close();
+            //Timeout to allow the tray to close before updating the list
+            setTimeout(() => {
+              updateDeviceList();
+            }, 500);
+          }
+        }
+      ],
+      open: function (tray) {
+        let trayBody = tray.find('.red-ui-tray-body');
+        trayBody.html($("#device-tray-template").html());
+
+        $("#node-input-deviceName").val(device.deviceName);
+        $("#node-input-max-dev-num").val(device.identity.maxDevNum);
+        $("#node-device-config-title").text(` ${device.deviceName} Configuration`);
+        $("#node-input-debug").val(device.controller.debug);
+        console.log(device.lorawan);
+        $("#node-input-flush-downlink-queue").val(String(device.lorawan.flushDownlinkQueue));
+        $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
+        $("#node-input-offset-av").val(device.bacnet.offsetAV);
+        $("#node-input-offset-bv").val(device.bacnet.offsetBV);
+        $("#node-input-instance-range-av").val(device.bacnet.instanceRangeAV);
+        $("#node-input-instance-range-bv").val(device.bacnet.instanceRangeBV);
+
+        $("#node-input-pId").val(device.lorawan.actility.driver.pId);
+        $("#node-input-mId").val(device.lorawan.actility.driver.mId);
+        $("#node-input-ver").val(device.lorawan.actility.driver.ver);
+
+        let actilityConfiguration = $("#actility-configuration");
+        if (node.networkServer === "actility") {
+          actilityConfiguration.show();
+        } else {
+          actilityConfiguration.hide();
+        }
+
+        let addObjectBtn = $("#add-object-btn");
+
+        addObjectBtn.on("click", function () {
+          createNewObject(device);
+          updateObjectList(device);
+        })
+
+        updateObjectList(device);
+      }
+    });
+  }
+
+  /**
+   * Update device list on the main tray
+   * and add event listeners to the edit and delete buttons
+   */
+   function updateObjectList(device) {
+    $("#node-input-object-list-container").empty();
+    device.bacnet.objects.forEach(function (object, index) {
+      var row = $("<div>").addClass("form-row").appendTo("#node-input-object-list-container");
+
+      // Object name input
+      let objectNameInput = $("<input>")
+        .attr({ type: "text", value: object.objectName, class: "node-input-list-item" })
+        .appendTo(row);
+
+      // Edit button
+      $("<button>")
+        .html(`<i class="fa fa-pencil"></i>`)
+        .css("margin-left", "10px")
+        .addClass("red-ui-button")
+        .click(function () {
+          object.objectName = objectNameInput.val();
+          showObjectTray(device, object);
+        })
+        .appendTo(row);
+
+      // Delete button
+      $("<button>")
+        .css("margin-left", "10px")
+        .html(`<i class="fa fa-trash"></i>`)
+        .addClass("red-ui-button")
+        .click(function () {
+          device.bacnet.objects.splice(index, 1);
+          updateObjectList(device);
+        })
+        .appendTo(row);
+    });
+  }
+
+// ==================================================
+// =============== OBJECT TRAY ======================
+// ==================================================
+
+  /**
+   * Open a new tray to configure an object
+   */
+  function showObjectTray(device, object) {
+    RED.tray.show({
+      title: "Configure object",
+      width: 400,
+      buttons: [
+        {
+          text: "Cancel",
+          click: function () {
+            RED.tray.close();
+          }
+        },
+        {
+          text: "Save",
+          class: "primary",
+          click: function () {
+            object.lorawanPayloadName = $("#node-input-lorawan-payload-name").val();
+            object.dataDirection = $("#node-input-data-direction").val();
+            object.objectType = $("#node-input-object-type").val();
+            object.instanceNum = Number($("#node-input-instance-num").val());
+            //object.downlinkStrategies = Number($("#node-input-downlink-strategies").val());
+            object.assignementMode = $("#node-input-object-mode").val();
+
+            if(object.dataDirection === "uplink") {
+              object.value = null;
+            } else if (object.objectType === "analogValue") {
+              object.value = Number($("#node-input-analog-value").val());
+            } else if (object.objectType === "binaryValue") {
+              object.value = Number($("#node-input-binary-value").val());
+            }
+
+            RED.tray.close();
+            //Timeout to allow the tray to close before updating the list
+            setTimeout(() => {
+              updateObjectList(device);
+            }, 500);
+          }
+        }
+      ],
+      open: function (tray) {
+        let trayBody = tray.find('.red-ui-tray-body');
+        trayBody.html($("#object-tray-template").html());
+
+        $("#node-object-config-title").text(`${object.objectName} Configuration`);
+
+        $("#node-input-lorawan-payload-name").val(object.lorawanPayloadName);
+        $("#node-input-data-direction").val(object.dataDirection);
+        $("#node-input-instance-num").val(object.instanceNum);
+        $("#node-input-object-mode").val(object.assignementMode);
+        //$("#node-input-downlink-strategies").val(object.downlinkStrategies);
+
+        let objectTypeSelect = $("#node-input-object-type");
+        let dataDirectionSelect = $("#node-input-data-direction");
+        objectTypeSelect.val(object.objectType);
+
+        let analogContainer = $("#node-analog-value-container");
+        let binaryContainer = $("#node-binary-value-container");
+
+        let analogDefaultValue = null;
+        let binaryDefaultValue = 0;
+
+        function toggleValueField() {
+          console.log(dataDirectionSelect.val());
+          if(dataDirectionSelect.val() === "uplink") {
+            analogContainer.hide();
+            binaryContainer.hide();
+            return;
+          }
+
+          if (objectTypeSelect.val() === "analogValue") {
+            analogContainer.show();
+            binaryContainer.hide();
+            $("#node-input-analog-value").val(analogDefaultValue);
+          } else if (objectTypeSelect.val() === "binaryValue") {
+            analogContainer.hide();
+            binaryContainer.show();
+            $("#node-input-binary-value").val(binaryDefaultValue);
+          }
+        }
+
+        dataDirectionSelect.on("change", function () {
+          toggleValueField();
+        });
+        
+        objectTypeSelect.on("change", function () {
+          toggleValueField();
+        });
+
+        toggleValueField();
+
+        if(object.objectType === "analogValue") {
+          $("#node-input-analog-value").val(object.value);
+        } else if (object.objectType === "binaryValue") {
+          $("#node-input-binary-value").val(object.value);
+        }
+      }
+    });
+  }
+},
+
+// ==================================================
+// =============== MAIN TRAY SAVE ===================
+// ==================================================
+
+oneditsave: function () {
+  // Save the configuration
+  this.ipAddress = $("#node-input-ipAddress").val();
+  this.networkServer = $("#node-input-networkServer").val();
+  this.grpcApiKey = $("#node-input-grpcApiKey").val();
+  this.protocol = $("#node-input-protocol").val();
+  this.bacnetLogin = $("#node-input-bacnetLogin").val();
+  this.bacnetPassword = $("#node-input-bacnetPassword").val();
+  this.model = $("#rest-api-bacnet-model").val();
+  this.class = $("#node-input-class").val();
+
+  // Update device list 
+  this.deviceList.forEach(function (device) {
+    device.controller.ipAddress = $("#node-input-ipAddress").val();
+    device.lorawan.networkServer = $("#node-input-networkServer").val();
+    device.lorawan.class = $("#node-input-class").val();
+    device.controller.protocol = $("#node-input-protocol").val();
+
+    device.controller.login = $("#node-input-bacnetLogin").val();
+    device.controller.password = $("#node-input-bacnetPassword").val();
+
+    device.lorawan.chirpstack.grpcApiKey = $("#node-input-grpcApiKey").val();
+  });
+
+  console.log(this.deviceList);
+  this.changed = true;
+  RED.nodes.dirty(this.id);
+  RED.notify("Device list saved", "success");
+}});
 </script>
 
 <script type="text/html" data-template-name="device-configuration">
