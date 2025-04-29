@@ -25,6 +25,74 @@
     oneditprepare: function () {
       var node = this;
 
+      // Tooltips for the configuration fields
+      const tooltips = {
+        deviceName:
+          "Device, Device Type or Device Group as it has been registered on your LNS.",
+        maxDevNum:
+          "The maximum number of device for this Type of for this group.",
+        debug: "Debug level",
+        flushDownlinkQueue:
+          "Whether you want to flush the downlink queue on your LNS for each downlink.",
+        downlinkPort: "The LoRaWAN downlink FPort for this object.",
+        offsetBV:
+          "From which BACnet instance do you want to store the Binary Value BACnet objects?",
+        offsetAV:
+          "From which BACnet instance do you want to store the Analog Value BACnet objects.",
+        instanceRangeBV:
+          "The maximum number of Binary Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
+        instanceRangeAV:
+          "The maximum number of Analog Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
+        lorawanPayloadName:
+          "Le LoRaWAN payload name as it has been decoding by you LoRaWAN payload decoder or as it should be provided to your LoRaWAN paylaod encoder.",
+        dataDirection:
+          "Is it a LoRaWAN payload to write to the BMS or a LoRaWAN paylaod to read from the BMS?",
+        defaultValue:
+          "Default downlink value if the Object is created by the API REST.",
+        objectType: "Type of BACnet object (Analog Value or Binary Value).",
+      };
+
+      function setupTooltips() {
+        $(document).on("mouseover", ".tooltip-icon", function () {
+          const key = $(this).data("tooltip");
+          if (!key || !tooltips[key]) return;
+
+          $(".lorawan-tooltip").remove();
+
+          const tooltip = $("<div>")
+            .addClass("lorawan-tooltip")
+            .html(tooltips[key]);
+          $("body").append(tooltip);
+
+          const rect = this.getBoundingClientRect();
+          tooltip.css({
+            left: `${rect.left + 20}px`,
+            top: `${rect.top - tooltip.outerHeight() - 10}px`,
+          });
+
+          const removeTooltip = () => {
+            setTimeout(() => {
+              if (!tooltip.is(":hover") && !$(this).is(":hover")) {
+                tooltip.remove();
+              }
+            }, 200);
+          };
+
+          $(this).on("mouseout", removeTooltip);
+          tooltip.on("mouseout", removeTooltip);
+        });
+      }
+
+      RED.events.on("editor:open", function () {
+        setTimeout(setupTooltips, 200);
+      });
+
+      RED.events.on("tray:open", function () {
+        setTimeout(setupTooltips, 200);
+      });
+
+      setupTooltips();
+
       // Input elements
       var ipAddressInput = $("#node-input-ipAddress");
       var networkServerSelect = $("#node-input-networkServer");
@@ -461,78 +529,6 @@
           },
         });
       }
-    },
-
-    function() {
-      // Define tooltips for each field
-      const tooltips = {
-        deviceName:
-          "Device, Device Type or Device Group as it has been registered on your LNS.",
-        maxDevNum:
-          "The maximum number of device for this Type of for this group.",
-        debug: "Debug level",
-        flushDownlinkQueue:
-          "Whether you want to flush the downlink queue on your LNS for each downlink.",
-        downlinkPort: "The LoRaWAN downlink FPort for this object.",
-        offsetBV:
-          "From which BACnet instance do you want to store the Binary Value BACnet objects?",
-        offsetAV:
-          "From which BACnet instance do you want to store the Analog Value BACnet objects.",
-        instanceRangeBV:
-          "The maximum number of Binary Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
-        instanceRangeAV:
-          "The maximum number of Analog Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
-        lorawanPayloadName:
-          "Le LoRaWAN payload name as it has been decoding by you LoRaWAN payload decoder or as it should be provided to your LoRaWAN paylaod encoder.",
-        dataDirection:
-          "Is it a LoRaWAN payload to write to the BMS or a LoRaWAN paylaod to read from the BMS?",
-        defaultValue:
-          "Default downlink value if the Object is created by the API REST.",
-        objectType: "Type of BACnet object (Analog Value or Binary Value).",
-      };
-
-      // Function to setup tooltips
-      function setupTooltips() {
-        $(document).on("mouseover", ".tooltip-icon", function () {
-          const key = $(this).data("tooltip");
-          if (!key || !tooltips[key]) return;
-
-          // Remove existing tooltips to avoid duplicates
-          $(".lorawan-tooltip").remove();
-
-          const tooltip = $("<div>")
-            .addClass("lorawan-tooltip")
-            .html(tooltips[key]);
-          $("body").append(tooltip);
-
-          const rect = this.getBoundingClientRect();
-          tooltip.css({
-            left: `${rect.left + 20}px`,
-            top: `${rect.top - tooltip.outerHeight() - 10}px`,
-          });
-
-          const removeTooltip = () => {
-            setTimeout(() => {
-              if (!tooltip.is(":hover") && !$(this).is(":hover")) {
-                tooltip.remove();
-              }
-            }, 200);
-          };
-
-          $(this).on("mouseout", removeTooltip);
-          tooltip.on("mouseout", removeTooltip);
-        });
-      }
-
-      // Initialize tooltips when the editor is opened
-      RED.events.on("editor:open", function () {
-        setTimeout(setupTooltips, 200);
-      });
-
-      // Initialize tooltips when the tray is opened
-      RED.events.on("tray:open", function () {
-        setTimeout(setupTooltips, 200);
-      });
     },
 
     // ==================================================
