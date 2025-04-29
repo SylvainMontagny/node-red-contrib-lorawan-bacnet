@@ -66,7 +66,7 @@
 
           const rect = this.getBoundingClientRect();
           tooltip.css({
-            left: `${rect.left + 20}px`,
+            left: `${rect.left - 17 }px`,
             top: `${rect.top - tooltip.outerHeight() - 10}px`,
           });
 
@@ -577,6 +577,7 @@
     color: #ffffff;
     padding: 10px;
     border-radius: 5px;
+    font-family: var(--red-ui-primary-font);
     font-size: 14px;
     max-width: 300px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
