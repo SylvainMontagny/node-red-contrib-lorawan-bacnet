@@ -66,7 +66,7 @@
 
           const rect = this.getBoundingClientRect();
           tooltip.css({
-            left: `${rect.left - 17 }px`,
+            left: `${rect.left - 17}px`,
             top: `${rect.top - tooltip.outerHeight() - 10}px`,
           });
 
@@ -529,8 +529,54 @@
           },
         });
       }
-    },
 
+      // ==================================================
+      // =============== IMPORT JSON TRAY =================
+      // ==================================================
+
+      function showImportJsonTray(deviceList) {
+        var node = this; // Save `this` context (important!)
+        var editorJson = null;
+
+        RED.tray.show({
+          title: "Import JSON Device List",
+          width: 400,
+          buttons: [
+            {
+              text: "Cancel",
+              click: function () {
+                RED.tray.close();
+              },
+            },
+            {
+              text: "Save",
+              class: "primary",
+              click: function () {
+                RED.tray.close();
+              },
+            },
+          ],
+          open: function (tray) {
+            let trayBody = tray.find(".red-ui-tray-body");
+            trayBody.html($("#import-device-list-template").html());
+            console.log(deviceList);
+            let jsonEditor = monaco.editor.create(document.getElementById('json-device-list-input'), {
+              value: JSON.stringify(deviceList, null, 2),
+              language: 'json',
+              theme: 'vs',
+              automaticLayout: true,
+              fontSize: 14
+            });
+            
+          },
+        });
+      }
+
+      $("#node-input-import-device-list").on("click", function () {
+        showImportJsonTray(node.deviceList);
+      });
+
+    },
     // ==================================================
     // =============== MAIN TRAY SAVE ===================
     // ==================================================
@@ -601,6 +647,7 @@
     cursor: help;
     color: #aaa;
   }
+
   .tooltip-icon:hover {
     color: #00aff0;
   }
@@ -696,9 +743,27 @@
     <div class="form-row">
       <h3><i class="fa fa-th-list"></i> Device list</h3>
     </div>
+
+    <div class="form-row">
+      <button id="node-input-import-device-list" class="red-ui-button" style="height: 35px; margin-left: 0px;">
+        <i class="fa fa-upload"></i> Import from JSON
+      </button>
+    </div>
+
     <div id="node-input-device-list-container"></div>
     <div class="form-row">
       <button id="node-input-addDevice"><i class="fa fa-plus"></i> Add device</button>
+    </div>
+  </div>
+</script>
+
+<script type="text/html" id="import-device-list-template">
+  <div>
+    <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
+      <div class="form-row">
+        <h3><i class="fa fa-upload"></i> Import JSON</h3>
+      </div>
+      <div style="height: 100%; width: 600px;" class="node-text-editor" id="json-device-list-input"></div>
     </div>
   </div>
 </script>
@@ -711,7 +776,7 @@
         <h3><i class="fa fa-cog"></i><span id="node-device-config-title"> Device Configuration</span></h3>
         <i class="fa fa-question-circle tooltip-icon" data-tooltip="deviceName" style="position: absolute; right: 10px; top: 10px;"></i>
       </div>
-
+      
       <div class="form-row">
         <label for="node-input-mmax-dev-num" style="width: auto"><i class="fa fa-arrow-up"></i> Maximum Device Number</label>
         <input type="number" id="node-input-max-dev-num" style="width: 80px; margin-left: 10px;"/>
