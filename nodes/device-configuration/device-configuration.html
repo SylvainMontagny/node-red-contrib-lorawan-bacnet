@@ -208,7 +208,7 @@
           priority: "low",
           objectType: "analogValue",
           uplinkToCompareWith: "",
-          range: [0,100],
+          range: [0, 100],
           value: null,
         };
         device.bacnet.objectsCount++;
@@ -334,23 +334,14 @@
 
             $("#node-input-deviceName").val(device.deviceName);
             $("#node-input-max-dev-num").val(device.identity.maxDevNum);
-            $("#node-device-config-title").text(
-              ` ${device.deviceName} Configuration`
-            );
+            $("#node-device-config-title").text(` ${device.deviceName} configuration`);
             $("#node-input-debug").val(device.controller.debug);
-            console.log(device.lorawan);
-            $("#node-input-flush-downlink-queue").val(
-              String(device.lorawan.flushDownlinkQueue)
-            );
+            $("#node-input-flush-downlink-queue").val( String(device.lorawan.flushDownlinkQueue));
             $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
             $("#node-input-offset-av").val(device.bacnet.offsetAV);
             $("#node-input-offset-bv").val(device.bacnet.offsetBV);
-            $("#node-input-instance-range-av").val(
-              device.bacnet.instanceRangeAV
-            );
-            $("#node-input-instance-range-bv").val(
-              device.bacnet.instanceRangeBV
-            );
+            $("#node-input-instance-range-av").val(device.bacnet.instanceRangeAV);
+            $("#node-input-instance-range-bv").val(device.bacnet.instanceRangeBV);
 
             $("#node-input-pId").val(device.lorawan.actility.driver.pId);
             $("#node-input-mId").val(device.lorawan.actility.driver.mId);
@@ -444,7 +435,7 @@
                 object.lorawanPayloadName = $("#node-input-lorawan-payload-name").val();
                 object.dataDirection = $("#node-input-data-direction").val();
                 object.objectType = $("#node-input-object-type").val();
-                object.instanceNum = Number( $("#node-input-instance-num").val());
+                object.instanceNum = Number($("#node-input-instance-num").val());
                 object.downlinkStrategie = $("#node-input-downlink-strategies").val();
                 object.assignementMode = $("#node-input-object-mode").val();
                 object.priority = $("#select-downlink-priority").val();
@@ -457,7 +448,7 @@
                   object.value = Number($("#node-input-binary-value").val());
                 }
 
-                switch(object.downlinkStrategie){
+                switch (object.downlinkStrategie) {
                   case "compareToUplinkValue":
                     object.uplinkToCompareWith = $("#input-compare-uplink-value").val();
                     break;
@@ -501,6 +492,7 @@
             let analogContainer = $("#node-analog-value-container");
             let binaryContainer = $("#node-binary-value-container");
 
+            let downlinkStrategiesContainer = $("#downlink-strategies-container");
             let downlinkStrategiesSelect = $("#node-input-downlink-strategies");
             let compareUplinkValueContainer = $("#input-compare-uplink-value-container");
             let onChangeOfValueWithinRangeContainer = $("#input-change-value-range-container");
@@ -509,7 +501,6 @@
             let binaryDefaultValue = 0;
 
             function toggleValueField() {
-              console.log(dataDirectionSelect.val());
               if (dataDirectionSelect.val() === "uplink") {
                 analogContainer.hide();
                 binaryContainer.hide();
@@ -527,8 +518,16 @@
               }
             }
 
-            function toggleDownlinkInput(){
-              switch(downlinkStrategiesSelect.val()){
+            function toggleDownlinkStrategies() {
+              if (dataDirectionSelect.val() === "uplink") {
+                downlinkStrategiesContainer.hide();
+              } else {
+                downlinkStrategiesContainer.show();
+              }
+            } 
+
+            function toggleDownlinkInput() {
+              switch (downlinkStrategiesSelect.val()) {
                 case "compareToUplinkValue":
                   compareUplinkValueContainer.show();
                   onChangeOfValueWithinRangeContainer.hide();
@@ -546,6 +545,7 @@
 
             dataDirectionSelect.on("change", function () {
               toggleValueField();
+              toggleDownlinkStrategies();
             });
 
             objectTypeSelect.on("change", function () {
@@ -558,6 +558,7 @@
 
             toggleValueField();
             toggleDownlinkInput();
+            toggleDownlinkStrategies();
 
             if (object.objectType === "analogValue") {
               $("#node-input-analog-value").val(object.value);
@@ -597,7 +598,6 @@
           open: function (tray) {
             let trayBody = tray.find(".red-ui-tray-body");
             trayBody.html($("#import-device-list-template").html());
-            console.log(deviceList);
             let jsonEditor = monaco.editor.create(document.getElementById('json-device-list-input'), {
               value: JSON.stringify(deviceList, null, 2),
               language: 'json',
@@ -605,7 +605,7 @@
               automaticLayout: true,
               fontSize: 14
             });
-            
+
           },
         });
       }
@@ -953,28 +953,30 @@
         </select>
       </div>
 
-      <div class="form-row">
-        <label for="node-input-downlink-strategies" style="width: 140px">
-          <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
-        </label>
-        <select id="node-input-downlink-strategies" style="width: 300px">
-            <option value="onChangeOfValue">On change of value</option>
-            <option value="compareToUplinkValue">On compare to a LoRaWAN uplink value</option>
-            <option value="onChangeOfValueWithinRange">On change of value within range</option>
-            <option value="noDownlink">No downlink</option>
-        </select>
-      </div>
+      <div id="downlink-strategies-container">
+        <div class="form-row">
+          <label for="node-input-downlink-strategies" style="width: 140px">
+            <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
+          </label>
+          <select id="node-input-downlink-strategies" style="width: 300px">
+              <option value="onChangeOfValue">On change of value</option>
+              <option value="compareToUplinkValue">On compare to a LoRaWAN uplink value</option>
+              <option value="onChangeOfValueWithinRange">On change of value within range</option>
+              <option value="noDownlink">No downlink</option>
+          </select>
+        </div>
 
-      <div class="form-row" id="input-compare-uplink-value-container">
-        <label for="input-compare-uplink-value" style="width: 140px"><i class="fa fa-tag"></i> Uplink Value</label>
-        <input type="text" id="input-compare-uplink-value" style="width: 140px"/>
-      </div>
+        <div class="form-row" id="input-compare-uplink-value-container">
+          <label for="input-compare-uplink-value" style="width: 140px"><i class="fa fa-tag"></i> Uplink Value</label>
+          <input type="text" id="input-compare-uplink-value" style="width: 140px"/>
+        </div>
 
-      <div class="form-row" id="input-change-value-range-container">
-        <label for="input-change-value-range" style="width: 140px"><i class="fa fa-arrows-h"></i> Value Range</label>
-        <input type="number" id="input-change-value-range-min" style="width: 80px"/>
-        <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
-        <input type="number" id="input-change-value-range-max" style="width: 80px"/>
+        <div class="form-row" id="input-change-value-range-container">
+          <label for="input-change-value-range" style="width: 140px"><i class="fa fa-arrows-h"></i> Value Range</label>
+          <input type="number" id="input-change-value-range-min" style="width: 80px"/>
+          <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
+          <input type="number" id="input-change-value-range-max" style="width: 80px"/>
+        </div>
       </div>
 
       <div class="form-row">
