@@ -27,8 +27,6 @@
 
       // Tooltips for the configuration fields
       const tooltips = {
-        deviceName:
-          "Device, Device Type or Device Group as it has been registered on your LNS.",
         maxDevNum:
           "The maximum number of device for this Type of for this group.",
         debug: "Debug level",
@@ -205,8 +203,12 @@
           lorawanPayloadName: "",
           dataDirection: "uplink",
           assignementMode: "auto",
+          downlinkStrategie: "onChangeOfValue",
           instanceNum: 0,
+          priority: "low",
           objectType: "analogValue",
+          uplinkToCompareWith: "",
+          range: [0,100],
           value: null,
         };
         device.bacnet.objectsCount++;
@@ -439,16 +441,13 @@
               text: "Save",
               class: "primary",
               click: function () {
-                object.lorawanPayloadName = $(
-                  "#node-input-lorawan-payload-name"
-                ).val();
+                object.lorawanPayloadName = $("#node-input-lorawan-payload-name").val();
                 object.dataDirection = $("#node-input-data-direction").val();
                 object.objectType = $("#node-input-object-type").val();
-                object.instanceNum = Number(
-                  $("#node-input-instance-num").val()
-                );
-                //object.downlinkStrategies = Number($("#node-input-downlink-strategies").val());
+                object.instanceNum = Number( $("#node-input-instance-num").val());
+                object.downlinkStrategie = $("#node-input-downlink-strategies").val();
                 object.assignementMode = $("#node-input-object-mode").val();
+                object.priority = $("#select-downlink-priority").val();
 
                 if (object.dataDirection === "uplink") {
                   object.value = null;
@@ -456,6 +455,18 @@
                   object.value = Number($("#node-input-analog-value").val());
                 } else if (object.objectType === "binaryValue") {
                   object.value = Number($("#node-input-binary-value").val());
+                }
+
+                switch(object.downlinkStrategie){
+                  case "compareToUplinkValue":
+                    object.uplinkToCompareWith = $("#input-compare-uplink-value").val();
+                    break;
+                  case "onChangeOfValueWithinRange":
+                    object.range[0] = Number($("#input-change-value-range-min").val());
+                    object.range[1] = Number($("#input-change-value-range-max").val());
+                    break;
+                  default:
+                    break;
                 }
 
                 RED.tray.close();
@@ -470,17 +481,18 @@
             let trayBody = tray.find(".red-ui-tray-body");
             trayBody.html($("#object-tray-template").html());
 
-            $("#node-object-config-title").text(
-              `${object.objectName} Configuration`
-            );
+            $("#node-object-config-title").text(`${object.objectName} Configuration`);
 
-            $("#node-input-lorawan-payload-name").val(
-              object.lorawanPayloadName
-            );
+            $("#node-input-lorawan-payload-name").val(object.lorawanPayloadName);
             $("#node-input-data-direction").val(object.dataDirection);
             $("#node-input-instance-num").val(object.instanceNum);
             $("#node-input-object-mode").val(object.assignementMode);
-            //$("#node-input-downlink-strategies").val(object.downlinkStrategies);
+            $("#node-input-downlink-strategies").val(object.downlinkStrategie);
+
+            $("#input-compare-uplink-value").val(object.uplinkToCompareWith);
+            $("#input-change-value-range-min").val(object.range[0]);
+            $("#input-change-value-range-max").val(object.range[1]);
+            $("#select-downlink-priority").val(object.priority);
 
             let objectTypeSelect = $("#node-input-object-type");
             let dataDirectionSelect = $("#node-input-data-direction");
@@ -488,6 +500,10 @@
 
             let analogContainer = $("#node-analog-value-container");
             let binaryContainer = $("#node-binary-value-container");
+
+            let downlinkStrategiesSelect = $("#node-input-downlink-strategies");
+            let compareUplinkValueContainer = $("#input-compare-uplink-value-container");
+            let onChangeOfValueWithinRangeContainer = $("#input-change-value-range-container");
 
             let analogDefaultValue = null;
             let binaryDefaultValue = 0;
@@ -511,6 +527,23 @@
               }
             }
 
+            function toggleDownlinkInput(){
+              switch(downlinkStrategiesSelect.val()){
+                case "compareToUplinkValue":
+                  compareUplinkValueContainer.show();
+                  onChangeOfValueWithinRangeContainer.hide();
+                  break;
+                case "onChangeOfValueWithinRange":
+                  compareUplinkValueContainer.hide();
+                  onChangeOfValueWithinRangeContainer.show();
+                  break;
+                default:
+                  compareUplinkValueContainer.hide();
+                  onChangeOfValueWithinRangeContainer.hide();
+                  break;
+              }
+            }
+
             dataDirectionSelect.on("change", function () {
               toggleValueField();
             });
@@ -519,7 +552,12 @@
               toggleValueField();
             });
 
+            downlinkStrategiesSelect.on("change", function () {
+              toggleDownlinkInput();
+            });
+
             toggleValueField();
+            toggleDownlinkInput();
 
             if (object.objectType === "analogValue") {
               $("#node-input-analog-value").val(object.value);
@@ -602,9 +640,7 @@
         device.controller.login = $("#node-input-bacnetLogin").val();
         device.controller.password = $("#node-input-bacnetPassword").val();
 
-        device.lorawan.chirpstack.grpcApiKey = $(
-          "#node-input-grpcApiKey"
-        ).val();
+        device.lorawan.chirpstack.grpcApiKey = $("#node-input-grpcApiKey").val();
       });
 
       console.log(this.deviceList);
@@ -720,15 +756,15 @@
 
       <div id="bacnet-settings">
         <div class="form-row">
+          <h3><i class="fa fa-cog"></i> Rest API BACnet Settings</h3>
+        </div>
+        <div class="form-row">
           <label for="rest-api-bacnet-model" style="width: 120px">
-            <i class="fa fa-bolt"></i> Model
+            <i class="fa fa-bolt"></i> API Model
           </label>
           <select id="rest-api-bacnet-model">
               <option value="distechControlsV2">Distech Control v2</option>
           </select>
-        </div>
-        <div class="form-row">
-          <h3><i class="fa fa-cog"></i> Rest API BACnet Login</h3>
         </div>
         <div class="form-row">
           <label for="node-input-bacnetLogin" style="width: 120px"><i class="fa fa-user"></i> Login</label>
@@ -743,13 +779,13 @@
     <div class="form-row">
       <h3><i class="fa fa-th-list"></i> Device list</h3>
     </div>
-
+<!-- 
     <div class="form-row">
       <button id="node-input-import-device-list" class="red-ui-button" style="height: 35px; margin-left: 0px;">
         <i class="fa fa-upload"></i> Import from JSON
       </button>
     </div>
-
+  -->
     <div id="node-input-device-list-container"></div>
     <div class="form-row">
       <button id="node-input-addDevice"><i class="fa fa-plus"></i> Add device</button>
@@ -774,7 +810,6 @@
 
       <div class="form-row">
         <h3><i class="fa fa-cog"></i><span id="node-device-config-title"> Device Configuration</span></h3>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="deviceName" style="position: absolute; right: 10px; top: 10px;"></i>
       </div>
       
       <div class="form-row">
@@ -911,14 +946,35 @@
       </div>
 
       <div class="form-row">
+        <label for="select-downlink-priority" style="width: 140px"><i class="fa fa-star"></i> Priority</label>
+        <select id="select-downlink-priority" style="width: 80px">
+            <option value="low">Low</option>
+            <option value="high">High</option>
+        </select>
+      </div>
+
+      <div class="form-row">
         <label for="node-input-downlink-strategies" style="width: 140px">
           <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
         </label>
         <select id="node-input-downlink-strategies" style="width: 300px">
-            <option value="0">On compare to a LoRaWAN uplink value</option>
-            <option value="1">On change of a BACnet object value</option>
-            <option value="2">No downlink</option>
+            <option value="onChangeOfValue">On change of value</option>
+            <option value="compareToUplinkValue">On compare to a LoRaWAN uplink value</option>
+            <option value="onChangeOfValueWithinRange">On change of value within range</option>
+            <option value="noDownlink">No downlink</option>
         </select>
+      </div>
+
+      <div class="form-row" id="input-compare-uplink-value-container">
+        <label for="input-compare-uplink-value" style="width: 140px"><i class="fa fa-tag"></i> Uplink Value</label>
+        <input type="text" id="input-compare-uplink-value" style="width: 140px"/>
+      </div>
+
+      <div class="form-row" id="input-change-value-range-container">
+        <label for="input-change-value-range" style="width: 140px"><i class="fa fa-arrows-h"></i> Value Range</label>
+        <input type="number" id="input-change-value-range-min" style="width: 80px"/>
+        <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
+        <input type="number" id="input-change-value-range-max" style="width: 80px"/>
       </div>
 
       <div class="form-row">

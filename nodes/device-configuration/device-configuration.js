@@ -27,7 +27,20 @@ module.exports = function (RED) {
                     obj = objectsArray[i];
                     let objectName = obj.objectName;
                     delete obj.objectName;
+                    switch (obj.downlinkStrategie) {
+                        case "compareToUplinkValue":
+                            delete obj.range;
+                            break;
+                        case "onChangeOfValueWithinRange":
+                            delete obj.uplinkToCompareWith;
+                            break;                 
+                        default:
+                            delete obj.uplinkToCompareWith;
+                            delete obj.range;
+                            break;
+                    }
                     device.bacnet.objects[objectName] = obj;
+
                   }
             });
             
