@@ -5,17 +5,22 @@
     icon: "node-red/cog.svg",
     defaults: {
       // Saved/Default Configuration
-      ipAddress: { value: "", required: false },
-      networkServer: { value: "tts", required: true },
-      grpcApiKey: { value: "", required: false },
-      protocol: { value: "restAPIBacnet", required: true },
-      model: { value: "distechControlsV2", required: false },
-      class: { value: "A", required: true },
-      bacnetLogin: { value: "", required: false },
-      bacnetPassword: { value: "", required: false },
+      globalConfig: {
+        value: {
+          ipAddress: "",
+          networkServer: "tts",
+          grpcApiKey: "",
+          protocol: "restAPIBacnet",
+          model: "distechControlsV2",
+          class: "A",
+          bacnetLogin: "",
+          bacnetPassword: "",
+        }
+      },
       // Devices
-      deviceCount: { value: 1, required: true },
-      deviceList: { value: [], required: true },
+      deviceCount: { value: 1 },
+      arrayDeviceList: { value: [] },
+      deviceList: { value: {} }
     },
     inputs: 1,
     outputs: 1,
@@ -25,61 +30,63 @@
     oneditprepare: function () {
       var node = this;
 
-      // Tooltips for the configuration fields
-      const tooltips = {
-        maxDevNum:
-          "The maximum number of device for this Type of for this group.",
-        debug: "Debug level",
-        flushDownlinkQueue:
-          "Whether you want to flush the downlink queue on your LNS for each downlink.",
-        downlinkPort: "The LoRaWAN downlink FPort for this object.",
-        offsetBV:
-          "From which BACnet instance do you want to store the Binary Value BACnet objects?",
-        offsetAV:
-          "From which BACnet instance do you want to store the Analog Value BACnet objects.",
-        instanceRangeBV:
-          "The maximum number of Binary Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
-        instanceRangeAV:
-          "The maximum number of Analog Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
-        lorawanPayloadName:
-          "Le LoRaWAN payload name as it has been decoding by you LoRaWAN payload decoder or as it should be provided to your LoRaWAN paylaod encoder.",
-        dataDirection:
-          "Is it a LoRaWAN payload to write to the BMS or a LoRaWAN paylaod to read from the BMS?",
-        defaultValue:
-          "Default downlink value if the Object is created by the API REST.",
-        objectType: "Type of BACnet object (Analog Value or Binary Value).",
-      };
+      // Inputs
+      var ipAddressInput = $("#input-ip-address");
+      var networkServerSelect = $("#select-network-server");
+      var chirpstackGrpcApiKey = $("#input-grpc-api-key");
+      var protocolSelect = $("#select-protocol");
+      var modelSelect = $("#select-bacnet-api-model");
+      var bacnetLoginInput = $("#input-bacnet-login");
+      var bacnetPasswordInput = $("#input-bacnet-password");
+      var classSelect = $("#select-class");
 
-      function setupTooltips() {
-        $(document).on("mouseover", ".tooltip-icon", function () {
-          const key = $(this).data("tooltip");
-          if (!key || !tooltips[key]) return;
+      //Containers
+      var chirpstackConfigContainer = $("#chirpstack-config");
+      var bacnetSettingsContainer = $("#bacnet-settings");
+      var deviceListContainer = $("#device-list-container");
 
-          $(".lorawan-tooltip").remove();
+      // Buttons
+      var importFromJsonBtn = $("#button-import-from-json");
+      var addDeviceBtn = $("#button-add-device");
 
-          const tooltip = $("<div>")
-            .addClass("lorawan-tooltip")
-            .html(tooltips[key]);
-          $("body").append(tooltip);
+      // Restore the configuration
+      if (node.ipAddress) ipAddressInput.val(node.ipAddress);
+      if (node.networkServer) networkServerSelect.val(node.networkServer);
+      if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
+      if (node.protocol) protocolSelect.val(node.protocol);
+      if (node.model) modelSelect.val(node.model);
+      if (node.class) classSelect.val();
+      if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
+      if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
 
-          const rect = this.getBoundingClientRect();
-          tooltip.css({
-            left: `${rect.left - 17}px`,
-            top: `${rect.top - tooltip.outerHeight() - 10}px`,
-          });
-
-          const removeTooltip = () => {
-            setTimeout(() => {
-              if (!tooltip.is(":hover") && !$(this).is(":hover")) {
-                tooltip.remove();
-              }
-            }, 200);
-          };
-
-          $(this).on("mouseout", removeTooltip);
-          tooltip.on("mouseout", removeTooltip);
-        });
+      // Toggle configurations inputs visibility
+      function toggleChirpstackConfig() {
+        if (networkServerSelect.val() === "chirpstack") {
+          chirpstackConfigContainer.show();
+        } else {
+          chirpstackConfigContainer.hide();
+        }
       }
+
+      function toggleBacnetSettings() {
+        if (protocolSelect.val() === "restAPIBacnet") {
+          bacnetSettingsContainer.show();
+        } else {
+          bacnetSettingsContainer.hide();
+        }
+      }
+
+      networkServerSelect.on("change", function () {
+        node.networkServer = networkServerSelect.val();
+        toggleChirpstackConfig();
+      });
+
+      protocolSelect.on("change", function () {
+        node.protocol = protocolSelect.val();
+        toggleBacnetSettings();
+      });
+
+      // Tool tips setup
 
       RED.events.on("editor:open", function () {
         setTimeout(setupTooltips, 200);
@@ -89,730 +96,695 @@
         setTimeout(setupTooltips, 200);
       });
 
-      setupTooltips();
+      // Buttons setup
 
-      // Input elements
-      var ipAddressInput = $("#node-input-ipAddress");
-      var networkServerSelect = $("#node-input-networkServer");
-      var chirpstackDiv = $("#chirpstack-config");
-      var chirpstackGrpcApiKey = $("#node-input-grpcApiKey");
+      addDeviceBtn.click(function () {
+        createNewDevice(node);
+        updateDeviceList(node);
+      });
 
-      var protocolSelect = $("#node-input-protocol");
-      var modelSelect = $("#rest-api-bacnet-model");
-      var bacnetLogin = $("#bacnet-settings");
-      var bacnetLoginInput = $("#node-input-bacnetLogin");
-      var bacnetPasswordInput = $("#node-input-bacnetPassword");
-      var classSelect = $("#node-input-class");
+      importFromJsonBtn.on("click", function () {
+        //showImportJsonTray(node);
+      });
 
-      // Restore the configuration
-      if (node.ipAddress) ipAddressInput.val(node.ipAddress);
-      if (node.networkServer) networkServerSelect.val(node.networkServer);
-      if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
-      if (node.protocol) protocolSelect.val(node.protocol);
-      if (node.model) modelSelect.val(node.model);
-      if (node.class) classSelect.val();
-
-      if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
-      if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
-
-      // Toggle configurations inputs visibility
-      function toggleChirpstackConfig() {
-        if (networkServerSelect.val() === "chirpstack") {
-          chirpstackDiv.show();
-        } else {
-          chirpstackDiv.hide();
-        }
-      }
-
-      function toggleBacnetLoginConfig() {
-        if (protocolSelect.val() === "restAPIBacnet") {
-          bacnetLogin.show();
-        } else {
-          bacnetLogin.hide();
-        }
-      }
-
+      // Init
       toggleChirpstackConfig();
-      toggleBacnetLoginConfig();
-
-      networkServerSelect.on("change", function () {
-        node.networkServer = networkServerSelect.val();
-        toggleChirpstackConfig();
-      });
-
-      protocolSelect.on("change", function () {
-        node.protocol = protocolSelect.val();
-        toggleBacnetLoginConfig();
-      });
-
-      /**
-       * Create a device object and add it to the device list
-       */
-      function createNewDevice() {
-        let device = {
-          deviceName: `device-${node.deviceCount}`,
-          identity: {
-            maxDevNum: 99,
-          },
-          controller: {
-            debug: ["all"],
-            model: modelSelect.val(),
-            protocol: protocolSelect.val(),
-            ipAddress: ipAddressInput.val(),
-            login: bacnetLoginInput.val(),
-            password: bacnetPasswordInput.val(),
-          },
-          lorawan: {
-            networkServer: networkServerSelect.val(),
-            downlinkPort: 30,
-            flushDownlinkQueue: true,
-            class: classSelect.val(),
-            chirpstack: {
-              grpcApiKey: chirpstackGrpcApiKey.val(),
-            },
-            actility: {
-              driver: {
-                pId: "",
-                mId: "",
-                ver: "",
-              },
-            },
-          },
-          bacnet: {
-            offsetAV: 0,
-            offsetBV: 0,
-            instanceRangeAV: 10,
-            instanceRangeBV: 10,
-            objectsCount: 1,
-            objects: [], //store in array then convert into desired format into the "on input" function
-          },
-          mqtt: {
-            topicDownlink: {},
-          },
-        };
-        node.deviceList.push(device);
-        node.deviceCount++;
-      }
-
-      /**
-       * Create a new object for a device and adds it to the list of objects of the device
-       */
-      function createNewObject(device) {
-        let object = {
-          objectName: `object-${device.bacnet.objectsCount}`,
-          lorawanPayloadName: "",
-          dataDirection: "uplink",
-          assignementMode: "auto",
-          downlinkStrategie: "onChangeOfValue",
-          instanceNum: 0,
-          priority: "low",
-          objectType: "analogValue",
-          uplinkToCompareWith: "",
-          range: [0, 100],
-          value: null,
-        };
-        device.bacnet.objectsCount++;
-        device.bacnet.objects.push(object);
-      }
-
-
-      /**
-       * Format array device list to json
-       */
-      function formatJSON(deviceList) {
-        // Device name to device format
-        let tmpDeviceList = {};
-        deviceList.forEach(element => {
-          const clone = JSON.parse(JSON.stringify(element)); // deep copy
-          const name = clone.deviceName;
-          delete clone.deviceName;
-
-          if (clone.controller.debug[0] === "none") {
-            clone.controller.debug[0] = null;
-          }
-
-          tmpDeviceList[name] = clone;
-        });
-
-        // Device objects array to json format
-        Object.values(tmpDeviceList).forEach((device) => {
-          let objectsArray = device.bacnet.objects;
-          delete device.bacnet.objectsCount;
-          device.bacnet.objects = {};
-          for (let i = 0; i < objectsArray.length; i++) {
-            obj = objectsArray[i];
-            let objectName = obj.objectName;
-            delete obj.objectName;
-            if (obj.dataDirection === "downlink") {
-              switch (obj.downlinkStrategie) {
-                case "compareToUplinkValue":
-                  delete obj.range;
-                  break;
-                case "onChangeOfValueWithinRange":
-                  delete obj.uplinkToCompareWith;
-                  break;
-                default:
-                  delete obj.uplinkToCompareWith;
-                  delete obj.range;
-                  break;
-              }
-            } else {
-              delete obj.downlinkStrategie;
-              delete obj.uplinkToCompareWith;
-              delete obj.range;
-            }
-            device.bacnet.objects[objectName] = obj;
-
-          }
-        });
-
-        // Remove logins and passwords if protocol is not restAPIBacnet
-        // And add httpAuthentication if protocol is restAPIBacnet
-        if (node.protocol === "restAPIBacnet") {
-          for (let device in tmpDeviceList) {
-            const authString = tmpDeviceList[device].controller.login + ':' + tmpDeviceList[device].controller.password;
-            tmpDeviceList[device].controller.httpAuthentication = "Basic " + btoa(authString);
-          }
-        } else {
-          for (let device in tmpDeviceList) {
-            delete tmpDeviceList[device].controller.model;
-            delete tmpDeviceList[device].controller.login;
-            delete tmpDeviceList[device].controller.password;
-          }
-        }
-
-        // Remove actility key if networkServer is not actility
-        if (node.networkServer !== "actility") {
-          for (let device in tmpDeviceList) {
-            delete tmpDeviceList[device].lorawan.actility;
-          }
-        }
-
-        // Remove chirpstack key if networkServer is not chirpstack
-        if (node.networkServer !== "chirpstack") {
-          for (let device in tmpDeviceList) {
-            delete tmpDeviceList[device].lorawan.chirpstack;
-          }
-        }
-        return tmpDeviceList;
-      }
-
-      /**
-       * Transform the JSON into an array
-       */
-      function unformatJSON(input) {
-        const defaultObjectProps = {
-          downlinkStrategie: "onChangeOfValue",
-          uplinkToCompareWith: "",
-          range: [0, 100],
-        };
-
-        const defaultLorawanProps = {
-          chirpstack: {
-            grpcApiKey: ""
-          },
-          actility: {
-            driver: {
-              pId: "",
-              mId: "",
-              ver: ""
-            }
-          }
-        };
-
-        const result = [];
-
-        for (const [deviceName, deviceData] of Object.entries(input)) {
-          const formattedDevice = {
-            deviceName,
-            identity: deviceData.identity || {},
-            controller: {
-              ...deviceData.controller,
-              httpAuthentication: undefined // Remove if exists
-            },
-            lorawan: {
-              ...deviceData.lorawan,
-              ...defaultLorawanProps
-            },
-            bacnet: {
-              ...deviceData.bacnet,
-              objectsCount: Object.keys(deviceData.bacnet?.objects || {}).length + 1,
-              objects: []
-            },
-            mqtt: deviceData.mqtt || {}
-          };
-
-          // Clean up controller by removing httpAuthentication
-          delete formattedDevice.controller.httpAuthentication;
-
-          // Format bacnet objects
-          const objects = deviceData.bacnet?.objects || {};
-          for (const [objectName, objectData] of Object.entries(objects)) {
-            formattedDevice.bacnet.objects.push({
-              objectName,
-              ...defaultObjectProps,
-              ...objectData
-            });
-          }
-
-          result.push(formattedDevice);
-        }
-
-        return result;
-      }
-
-      /**
-       * Update device list on the main tray
-       * and add event listeners to the edit and delete buttons
-       */
-      function updateDeviceList() {
-        $("#node-input-device-list-container").empty();
-        console.log(node.deviceList);
-        node.deviceList.forEach(function (device, index) {
-          var row = $("<div>")
-            .addClass("form-row")
-            .appendTo("#node-input-device-list-container");
-
-          // Device name input
-          let deviceNameInput = $("<input>")
-            .attr({
-              type: "text",
-              value: device.deviceName,
-              class: "node-input-list-item",
-            })
-            .appendTo(row);
-
-          // Edit button
-          $("<button>")
-            .html(`<i class="fa fa-pencil"></i>`)
-            .css("margin-left", "10px")
-            .addClass("red-ui-button")
-            .click(function () {
-              device.deviceName = deviceNameInput.val();
-              showDeviceTray(device);
-            })
-            .appendTo(row);
-
-          // Delete button
-          $("<button>")
-            .css("margin-left", "10px")
-            .html(`<i class="fa fa-trash"></i>`)
-            .addClass("red-ui-button")
-            .click(function () {
-              node.deviceList.splice(index, 1);
-              updateDeviceList();
-            })
-            .appendTo(row);
-        });
-      }
-
-      // Add device button
-      $("#node-input-addDevice")
-        .addClass("editor-button")
-        .click(function () {
-          createNewDevice();
-          updateDeviceList();
-        });
-
-      updateDeviceList();
-
-      // ==================================================
-      // =============== DEVICE TRAY ======================
-      // ==================================================
-
-      /**
-       * Open a new tray to configure a device
-       */
-      function showDeviceTray(device) {
-        RED.tray.show({
-          title: "Configure device",
-          width: 400,
-          buttons: [
-            {
-              text: "Cancel",
-              click: function () {
-                RED.tray.close();
-              },
-            },
-            {
-              text: "Save",
-              class: "primary",
-              click: function () {
-                // Save the device configuration in the device list
-                device.identity.maxDevNum = Number(
-                  $("#node-input-max-dev-num").val()
-                );
-                device.controller.debug = [$("#node-input-debug").val()];
-                device.lorawan.flushDownlinkQueue =
-                  $("#node-input-flush-downlink-queue").val() === "true"
-                    ? true
-                    : false; // Boolean conversion
-                device.lorawan.downlinkPort = Number(
-                  $("#node-input-downlinkPort").val()
-                );
-                device.bacnet.offsetAV = Number(
-                  $("#node-input-offset-av").val()
-                );
-                device.bacnet.offsetBV = Number(
-                  $("#node-input-offset-bv").val()
-                );
-                device.bacnet.instanceRangeAV = Number(
-                  $("#node-input-instance-range-av").val()
-                );
-                device.bacnet.instanceRangeBV = Number(
-                  $("#node-input-instance-range-bv").val()
-                );
-
-                device.lorawan.actility.driver.pId = $("#node-input-pId").val();
-                device.lorawan.actility.driver.mId = $("#node-input-mId").val();
-                device.lorawan.actility.driver.ver = $("#node-input-ver").val();
-
-                RED.tray.close();
-                //Timeout to allow the tray to close before updating the list
-                setTimeout(() => {
-                  updateDeviceList();
-                }, 500);
-              },
-            },
-          ],
-          open: function (tray) {
-            let trayBody = tray.find(".red-ui-tray-body");
-            trayBody.html($("#device-tray-template").html());
-
-            $("#node-input-deviceName").val(device.deviceName);
-            $("#node-input-max-dev-num").val(device.identity.maxDevNum);
-            $("#node-device-config-title").text(` ${device.deviceName} configuration`);
-            $("#node-input-debug").val(device.controller.debug);
-            $("#node-input-flush-downlink-queue").val(String(device.lorawan.flushDownlinkQueue));
-            $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
-            $("#node-input-offset-av").val(device.bacnet.offsetAV);
-            $("#node-input-offset-bv").val(device.bacnet.offsetBV);
-            $("#node-input-instance-range-av").val(device.bacnet.instanceRangeAV);
-            $("#node-input-instance-range-bv").val(device.bacnet.instanceRangeBV);
-
-            $("#node-input-pId").val(device.lorawan.actility.driver.pId);
-            $("#node-input-mId").val(device.lorawan.actility.driver.mId);
-            $("#node-input-ver").val(device.lorawan.actility.driver.ver);
-
-            let actilityConfiguration = $("#actility-configuration");
-            if (node.networkServer === "actility") {
-              actilityConfiguration.show();
-            } else {
-              actilityConfiguration.hide();
-            }
-
-            let addObjectBtn = $("#add-object-btn");
-
-            addObjectBtn.on("click", function () {
-              createNewObject(device);
-              updateObjectList(device);
-            });
-
-            updateObjectList(device);
-          },
-        });
-      }
-
-      /**
-       * Update device list on the main tray
-       * and add event listeners to the edit and delete buttons
-       */
-      function updateObjectList(device) {
-        $("#node-input-object-list-container").empty();
-        device.bacnet.objects.forEach(function (object, index) {
-          var row = $("<div>")
-            .addClass("form-row")
-            .appendTo("#node-input-object-list-container");
-
-          // Object name input
-          let objectNameInput = $("<input>")
-            .attr({
-              type: "text",
-              value: object.objectName,
-              class: "node-input-list-item",
-            })
-            .appendTo(row);
-
-          // Edit button
-          $("<button>")
-            .html(`<i class="fa fa-pencil"></i>`)
-            .css("margin-left", "10px")
-            .addClass("red-ui-button")
-            .click(function () {
-              object.objectName = objectNameInput.val();
-              showObjectTray(device, object);
-            })
-            .appendTo(row);
-
-          // Delete button
-          $("<button>")
-            .css("margin-left", "10px")
-            .html(`<i class="fa fa-trash"></i>`)
-            .addClass("red-ui-button")
-            .click(function () {
-              device.bacnet.objects.splice(index, 1);
-              updateObjectList(device);
-            })
-            .appendTo(row);
-        });
-      }
-
-      // ==================================================
-      // =============== OBJECT TRAY ======================
-      // ==================================================
-
-      /**
-       * Open a new tray to configure an object
-       */
-      function showObjectTray(device, object) {
-        RED.tray.show({
-          title: "Configure object",
-          width: 400,
-          buttons: [
-            {
-              text: "Cancel",
-              click: function () {
-                RED.tray.close();
-              },
-            },
-            {
-              text: "Save",
-              class: "primary",
-              click: function () {
-                object.lorawanPayloadName = $("#node-input-lorawan-payload-name").val();
-                object.dataDirection = $("#node-input-data-direction").val();
-                object.objectType = $("#node-input-object-type").val();
-                object.instanceNum = Number($("#node-input-instance-num").val());
-                object.downlinkStrategie = $("#node-input-downlink-strategies").val();
-                object.assignementMode = $("#node-input-object-mode").val();
-                object.priority = $("#select-downlink-priority").val();
-
-                if (object.dataDirection === "uplink") {
-                  object.value = null;
-                } else if (object.objectType === "analogValue") {
-                  object.value = Number($("#node-input-analog-value").val());
-                } else if (object.objectType === "binaryValue") {
-                  object.value = Number($("#node-input-binary-value").val());
-                }
-
-                switch (object.downlinkStrategie) {
-                  case "compareToUplinkValue":
-                    object.uplinkToCompareWith = $("#input-compare-uplink-value").val();
-                    break;
-                  case "onChangeOfValueWithinRange":
-                    object.range[0] = Number($("#input-change-value-range-min").val());
-                    object.range[1] = Number($("#input-change-value-range-max").val());
-                    break;
-                  default:
-                    break;
-                }
-
-                RED.tray.close();
-                //Timeout to allow the tray to close before updating the list
-                setTimeout(() => {
-                  updateObjectList(device);
-                }, 500);
-              },
-            },
-          ],
-          open: function (tray) {
-            let trayBody = tray.find(".red-ui-tray-body");
-            trayBody.html($("#object-tray-template").html());
-
-            $("#node-object-config-title").text(`${object.objectName} Configuration`);
-
-            $("#node-input-lorawan-payload-name").val(object.lorawanPayloadName);
-            $("#node-input-data-direction").val(object.dataDirection);
-            $("#node-input-instance-num").val(object.instanceNum);
-            $("#node-input-object-mode").val(object.assignementMode);
-            $("#node-input-downlink-strategies").val(object.downlinkStrategie);
-
-            $("#input-compare-uplink-value").val(object.uplinkToCompareWith);
-            $("#input-change-value-range-min").val(object.range[0]);
-            $("#input-change-value-range-max").val(object.range[1]);
-            $("#select-downlink-priority").val(object.priority);
-
-            let objectTypeSelect = $("#node-input-object-type");
-            let dataDirectionSelect = $("#node-input-data-direction");
-            objectTypeSelect.val(object.objectType);
-
-            let analogContainer = $("#node-analog-value-container");
-            let binaryContainer = $("#node-binary-value-container");
-
-            let downlinkStrategiesContainer = $("#downlink-strategies-container");
-            let downlinkStrategiesSelect = $("#node-input-downlink-strategies");
-            let compareUplinkValueContainer = $("#input-compare-uplink-value-container");
-            let onChangeOfValueWithinRangeContainer = $("#input-change-value-range-container");
-
-            let analogDefaultValue = null;
-            let binaryDefaultValue = 0;
-
-            function toggleValueField() {
-              if (dataDirectionSelect.val() === "uplink") {
-                analogContainer.hide();
-                binaryContainer.hide();
-                return;
-              }
-
-              if (objectTypeSelect.val() === "analogValue") {
-                analogContainer.show();
-                binaryContainer.hide();
-                $("#node-input-analog-value").val(analogDefaultValue);
-              } else if (objectTypeSelect.val() === "binaryValue") {
-                analogContainer.hide();
-                binaryContainer.show();
-                $("#node-input-binary-value").val(binaryDefaultValue);
-              }
-            }
-
-            function toggleDownlinkStrategies() {
-              if (dataDirectionSelect.val() === "uplink") {
-                downlinkStrategiesContainer.hide();
-              } else {
-                downlinkStrategiesContainer.show();
-              }
-            }
-
-            function toggleDownlinkInput() {
-              switch (downlinkStrategiesSelect.val()) {
-                case "compareToUplinkValue":
-                  compareUplinkValueContainer.show();
-                  onChangeOfValueWithinRangeContainer.hide();
-                  break;
-                case "onChangeOfValueWithinRange":
-                  compareUplinkValueContainer.hide();
-                  onChangeOfValueWithinRangeContainer.show();
-                  break;
-                default:
-                  compareUplinkValueContainer.hide();
-                  onChangeOfValueWithinRangeContainer.hide();
-                  break;
-              }
-            }
-
-            dataDirectionSelect.on("change", function () {
-              toggleValueField();
-              toggleDownlinkStrategies();
-            });
-
-            objectTypeSelect.on("change", function () {
-              toggleValueField();
-            });
-
-            downlinkStrategiesSelect.on("change", function () {
-              toggleDownlinkInput();
-            });
-
-            toggleValueField();
-            toggleDownlinkInput();
-            toggleDownlinkStrategies();
-
-            if (object.objectType === "analogValue") {
-              $("#node-input-analog-value").val(object.value);
-            } else if (object.objectType === "binaryValue") {
-              $("#node-input-binary-value").val(object.value);
-            }
-          },
-        });
-      }
-
-      // ==================================================
-      // =============== IMPORT JSON TRAY =================
-      // ==================================================
-
-      function showImportJsonTray(deviceList) {
-        var editorJson = null;
-
-        RED.tray.show({
-          title: "Import JSON Device List",
-          width: 400,
-          buttons: [
-            {
-              text: "Cancel",
-              click: function () {
-                RED.tray.close();
-              },
-            },
-            {
-              text: "Save",
-              class: "primary",
-              click: function () {
-                RED.tray.close();
-
-                let inputOveride = document.getElementById('input-overide-device-list');
-                const editorContent = jsonEditor.getValue();
-                const parsed = JSON.parse(editorContent);
-                node.deviceList = unformatJSON(parsed);
-                console.log(node.deviceList);
-
-                if (inputOveride.checked) {
-                  node.deviceList = unformatJSON(parsed);
-                } else {
-                  node.deviceList = [...node.deviceList, ...unformatJSON(parsed)];
-
-                }
-                //Timeout to allow the tray to close before updating the list
-                setTimeout(() => {
-                  updateDeviceList();
-                }, 500);
-              },
-            },
-          ],
-          open: function (tray) {
-            let trayBody = tray.find(".red-ui-tray-body");
-            trayBody.html($("#import-device-list-template").html());
-            jsonEditor = monaco.editor.create(document.getElementById('json-device-list-input'), {
-              value: JSON.stringify(formatJSON(deviceList), null, 2),
-              language: 'json',
-              theme: 'vs',
-              automaticLayout: true,
-              fontSize: 14
-            });
-            console.log(deviceList);
-            console.log(formatJSON(deviceList))
-          },
-        });
-      }
-
-      $("#node-input-import-device-list").on("click", function () {
-        showImportJsonTray(node.deviceList);
-      });
-
+      toggleBacnetSettings();
+      setupTooltips();
+      updateDeviceList(node);
     },
     // ==================================================
     // =============== MAIN TRAY SAVE ===================
     // ==================================================
 
     oneditsave: function () {
-      // Save the configuration
-      this.ipAddress = $("#node-input-ipAddress").val();
-      this.networkServer = $("#node-input-networkServer").val();
-      this.grpcApiKey = $("#node-input-grpcApiKey").val();
-      this.protocol = $("#node-input-protocol").val();
-      this.bacnetLogin = $("#node-input-bacnetLogin").val();
-      this.bacnetPassword = $("#node-input-bacnetPassword").val();
-      this.model = $("#rest-api-bacnet-model").val();
-      this.class = $("#node-input-class").val();
-
-      // Update device list
-      this.deviceList.forEach(function (device) {
-        device.controller.ipAddress = $("#node-input-ipAddress").val();
-        device.lorawan.networkServer = $("#node-input-networkServer").val();
-        device.lorawan.class = $("#node-input-class").val();
-        device.controller.protocol = $("#node-input-protocol").val();
-
-        device.controller.login = $("#node-input-bacnetLogin").val();
-        device.controller.password = $("#node-input-bacnetPassword").val();
-
-        device.lorawan.chirpstack.grpcApiKey = $("#node-input-grpcApiKey").val();
-      });
-
+      formatArrayToJSON(this);
       console.log(this.deviceList);
+
       this.changed = true;
       RED.nodes.dirty(this.id);
       RED.notify("Device list saved", "success");
     },
   });
+
+  /**
+  * Save the global configuration into the node
+  */
+  function saveGlobalConfig(node) {
+    node.globalConfig.ipAddress = $("#input-ip-address").val();
+    node.globalConfig.networkServer = $("#select-network-server").val();
+    node.globalConfig.grpcApiKey = $("#input-grpc-api-key").val();
+    node.globalConfig.protocol = $("#select-protocol").val();
+    node.globalConfig.bacnetLogin = $("#input-bacnet-login").val();
+    node.globalConfig.bacnetPassword = $("#input-bacnet-password").val();
+    node.globalConfig.model = $("#select-bacnet-api-model").val();
+    node.globalConfig.class = $("#select-class").val();
+  }
+
+  // ==================================================
+  // =============== DEVICE FUNCTIONS =================
+  // ==================================================
+
+  /**
+  * Create a device object and adds it to the array device list
+  * Filled with default values
+  */
+  function createNewDevice(node) {
+    let device = {
+      deviceName: `device-${node.deviceCount}`,
+      maxDevNum: 99,
+      debug: "all",
+      downlinkPort: 30,
+      flushDownlinkQueue: true,
+      class: "A",
+      pId: "",
+      mId: "",
+      ver: "",
+      offsetAV: 0,
+      offsetBV: 0,
+      instanceRangeAV: 10,
+      instanceRangeBV: 10,
+      objectsCount: 1,
+      objects: [],
+    };
+    node.arrayDeviceList.push(device);
+    node.deviceCount++;
+  }
+
+  /**
+   * Update device list on the main tray
+   * and add event listeners to the edit and delete buttons
+   */
+  function updateDeviceList(node) {
+    const deviceListContainer = $("#device-list-container");
+    deviceListContainer.empty();
+    node.arrayDeviceList.forEach(function (device, index) {
+      const row = $("<div>").addClass("form-row").appendTo(deviceListContainer);
+
+      // Device name input
+      const deviceNameInput = $("<input>")
+        .attr("type", "text")
+        .val(device.deviceName)
+        .addClass("node-input-list-item")
+        .appendTo(row);
+
+      // Update device name input when editing
+      deviceNameInput.on("input", function () {
+        device.deviceName = $(this).val();
+      });
+
+      // Edit button
+      $("<button>")
+        .html(`<i class="fa fa-pencil"></i>`)
+        .attr("title", "Modifier")
+        .addClass("red-ui-button")
+        .css("margin-left", "10px")
+        .click(function () {
+          showDeviceTray(node, device);
+        })
+        .appendTo(row);
+
+      // Delete button
+      $("<button>")
+        .html(`<i class="fa fa-trash"></i>`)
+        .attr("title", "Supprimer")
+        .addClass("red-ui-button")
+        .css("margin-left", "10px")
+        .click(function () {
+          node.arrayDeviceList.splice(index, 1);
+          updateDeviceList(node);
+        })
+        .appendTo(row);
+    });
+  }
+
+  // ==================================================
+  // =============== DEVICE TRAY ======================
+  // ==================================================
+
+  /**
+   * Open a new tray to configure a device
+   */
+  function showDeviceTray(node, device) {
+    // Input variables
+    let inputMaxDevNum,
+      selectDebug,
+      selectFlushDownlinkQueue,
+      inputDownlinkPort,
+      inputOffsetAV,
+      inputOffsetBV,
+      inputInstanceRangeAV,
+      inputInstanceRangeBV,
+      inputPId,
+      inputMId,
+      inputVer;
+
+    RED.tray.show({
+      title: "Configure device",
+      width: 400,
+      open: function (tray) {
+        // Fill with HTML template
+        let trayBody = tray.find(".red-ui-tray-body");
+        trayBody.html($("#device-config-template").html());
+        $("#node-device-config-title").text(` ${device.deviceName} configuration`); // Set title
+
+        // Init input variables
+        inputMaxDevNum = $("#input-max-dev-num");
+        selectDebug = $("#select-debug");
+        selectFlushDownlinkQueue = $("#select-flush-downlink-queue");
+        inputDownlinkPort = $("#input-downlink-port");
+        inputOffsetAV = $("#input-offset-av");
+        inputOffsetBV = $("#input-offset-bv");
+        inputInstanceRangeAV = $("#input-instance-range-av");
+        inputInstanceRangeBV = $("#input-instance-range-bv");
+        inputPId = $("#input-pId");
+        inputMId = $("#input-mId");
+        inputVer = $("#input-ver");
+
+        // Fill inputs
+        inputMaxDevNum.val(device.maxDevNum);
+        selectDebug.val(device.debug);
+        selectFlushDownlinkQueue.val(String(device.flushDownlinkQueue)); // To string conversion since it's a select
+        inputDownlinkPort.val(device.downlinkPort);
+        inputOffsetAV.val(device.offsetAV);
+        inputOffsetBV.val(device.offsetBV);
+        inputInstanceRangeAV.val(device.instanceRangeAV);
+        inputInstanceRangeBV.val(device.instanceRangeBV);
+        inputPId.val(device.pId);
+        inputMId.val(device.mId);
+        inputVer.val(device.ver);
+
+        let actilityConfiguration = $("#actility-configuration");
+        if (node.networkServer === "actility") {
+          actilityConfiguration.show();
+        } else {
+          actilityConfiguration.hide();
+        }
+
+        let addObjectBtn = $("#add-object-btn");
+        addObjectBtn.on("click", function () {
+          createNewObject(device);
+          updateObjectList(device);
+        });
+
+        updateObjectList(device);
+      },
+      buttons: [
+        {
+          text: "Cancel",
+          click: function () {
+            RED.tray.close();
+          },
+        },
+        {
+          text: "Save",
+          class: "primary",
+          click: function () {
+            device.maxDevNum = Number(inputMaxDevNum.val());
+            device.debug = selectDebug.val();
+            device.flushDownlinkQueue = selectFlushDownlinkQueue.val() === "true"; // Convert to boolean based on string
+            device.downlinkPort = Number(inputDownlinkPort.val());
+            device.offsetAV = Number(inputOffsetAV.val());
+            device.offsetBV = Number(inputOffsetBV.val());
+            device.instanceRangeAV = Number(inputInstanceRangeAV.val());
+            device.instanceRangeBV = Number(inputInstanceRangeBV.val());
+            device.pId = inputPId.val();
+            device.mId = inputMId.val();
+            device.ver = inputVer.val();
+
+            RED.tray.close();
+            //Timeout to allow the tray to close before updating the list
+            setTimeout(() => {
+              updateDeviceList(node);
+            }, 500);
+          },
+        },
+      ]
+    });
+  }
+
+  // ==================================================
+  // =============== OBJECTS ==========================
+  // ==================================================
+
+  /**
+   * Create a new object for a device and adds it to the list of objects of the device
+   * Filled with default values
+   */
+  function createNewObject(device) {
+    let object = {
+      objectName: `object-${device.objectsCount}`,
+      lorawanPayloadName: "",
+      dataDirection: "uplink",
+      assignementMode: "auto",
+      downlinkStrategie: "onChangeOfValue",
+      instanceNum: 0,
+      priority: "low",
+      objectType: "analogValue",
+      uplinkToCompareWith: "",
+      rangeMin: 0,
+      rangeMax: 100,
+      binaryValue: 0,
+      analogValue: 0
+    };
+    device.objectsCount++;
+    device.objects.push(object);
+  }
+
+  /**
+  * Update device list on the main tray
+  * and add event listeners to the edit and delete buttons
+  */
+  function updateObjectList(device) {
+    const objectListContainer = $("#object-list-container");
+    objectListContainer.empty();
+    device.objects.forEach(function (object, index) {
+      const row = $("<div>")
+        .addClass("form-row")
+        .appendTo(objectListContainer);
+
+      // Object name input
+      const objectNameInput = $("<input>")
+        .attr({
+          type: "text",
+          value: object.objectName,
+          class: "node-input-list-item",
+        })
+        .appendTo(row);
+
+      // Update device name input when leaving input
+      objectNameInput.on("input", function () {
+        object.objectName = $(this).val();
+      });
+
+      // Edit button
+      $("<button>")
+        .html(`<i class="fa fa-pencil"></i>`)
+        .css("margin-left", "10px")
+        .addClass("red-ui-button")
+        .click(function () {
+          showObjectTray(device, object);
+        })
+        .appendTo(row);
+
+      // Delete button
+      $("<button>")
+        .css("margin-left", "10px")
+        .html(`<i class="fa fa-trash"></i>`)
+        .addClass("red-ui-button")
+        .click(function () {
+          device.objects.splice(index, 1);
+          updateObjectList(device);
+        })
+        .appendTo(row);
+    });
+  }
+
+  // ==================================================
+  // =============== OBJECT TRAY ======================
+  // ==================================================
+
+  /**
+  * Open a new tray to configure an object
+  */
+  function showObjectTray(device, object) {
+    let inputPayloadName,
+      selectDataDirection,
+      selectObjectType,
+      inputInstanceNum,
+      selectObjectMode,
+      selectDownlinkStrategies,
+      inputCompareUplinkValue,
+      inputRangeMin,
+      inputRangeMax,
+      selectPriority,
+      inputAnalogValue,
+      inputBinaryValue;
+
+    RED.tray.show({
+      title: "Configure object",
+      width: 400,
+      open: function (tray) {
+        // Fill with HTML template
+        let trayBody = tray.find(".red-ui-tray-body");
+        trayBody.html($("#object-config-template").html());
+        $("#node-object-config-title").text(`${object.objectName} Configuration`);
+
+        // Init input variables
+        inputPayloadName = $("#input-lorawan-payload-name");
+        selectDataDirection = $("#select-data-direction");
+        selectObjectType = $("#select-object-type");
+        inputInstanceNum = $("#input-instance-num");
+        selectObjectMode = $("#select-object-mode");
+        selectDownlinkStrategies = $("#select-downlink-strategies");
+        inputCompareUplinkValue = $("#input-compare-uplink-value");
+        inputRangeMin = $("#input-change-value-range-min");
+        inputRangeMax = $("#input-change-value-range-max");
+        selectPriority = $("#select-downlink-priority");
+        inputAnalogValue = $("#input-analog-value");
+        inputBinaryValue = $("#input-binary-value");
+
+        // Fill inputs
+        inputPayloadName.val(object.lorawanPayloadName);
+        selectDataDirection.val(object.dataDirection);
+        selectObjectType.val(object.objectType);
+        inputInstanceNum.val(object.instanceNum);
+        selectObjectMode.val(object.assignementMode);
+        selectDownlinkStrategies.val(object.downlinkStrategie);
+        inputCompareUplinkValue.val(object.uplinkToCompareWith);
+        inputRangeMin.val(object.rangeMin);
+        inputRangeMax.val(object.rangeMax);
+        selectPriority.val(object.priority);
+        inputAnalogValue.val(object.analogValue);
+        inputBinaryValue.val(object.binaryValue);
+
+        // Containers
+        let analogContainer = $("#node-analog-value-container");
+        let binaryContainer = $("#node-binary-value-container");
+
+        let downlinkStrategiesContainer = $("#downlink-strategies-container");
+        let compareUplinkValueContainer = $("#compare-uplink-value-container");
+        let onChangeOfValueWithinRangeContainer = $("#change-value-range-container");
+
+
+        // Toggles
+        function toggleValueField() {
+          if (selectDataDirection.val() === "uplink") {
+            analogContainer.hide();
+            binaryContainer.hide();
+            return;
+          }
+
+          if (selectObjectType.val() === "analogValue") {
+            analogContainer.show();
+            binaryContainer.hide();
+          } else if (selectObjectType.val() === "binaryValue") {
+            analogContainer.hide();
+            binaryContainer.show();
+          }
+        }
+
+        function toggleDownlinkStrategies() {
+          if (selectDataDirection.val() === "uplink") {
+            downlinkStrategiesContainer.hide();
+          } else {
+            downlinkStrategiesContainer.show();
+          }
+        }
+
+        function toggleDownlinkInput() {
+          switch (selectDownlinkStrategies.val()) {
+            case "compareToUplinkValue":
+              compareUplinkValueContainer.show();
+              onChangeOfValueWithinRangeContainer.hide();
+              break;
+            case "onChangeOfValueWithinRange":
+              compareUplinkValueContainer.hide();
+              onChangeOfValueWithinRangeContainer.show();
+              break;
+            default:
+              compareUplinkValueContainer.hide();
+              onChangeOfValueWithinRangeContainer.hide();
+              break;
+          }
+        }
+
+        selectDataDirection.on("change", function () {
+          toggleValueField();
+          toggleDownlinkStrategies();
+        });
+
+        selectObjectType.on("change", function () {
+          toggleValueField();
+        });
+
+        selectDownlinkStrategies.on("change", function () {
+          toggleDownlinkInput();
+        });
+
+        // Init
+        toggleValueField();
+        toggleDownlinkInput();
+        toggleDownlinkStrategies();
+
+      },
+      buttons: [
+        {
+          text: "Cancel",
+          click: function () {
+            RED.tray.close();
+          },
+        },
+        {
+          text: "Save",
+          class: "primary",
+          click: function () {
+            object.lorawanPayloadName = inputPayloadName.val();
+            object.dataDirection = selectDataDirection.val();
+            object.objectType = selectObjectType.val();
+            object.instanceNum = Number(inputInstanceNum.val());
+            object.assignementMode = selectObjectMode.val();
+            object.downlinkStrategie = selectDownlinkStrategies.val();
+            object.priority = selectPriority.val();
+            object.rangeMin = Number(inputRangeMin.val());
+            object.rangeMax = Number(inputRangeMax.val());
+            object.analogValue = Number(inputAnalogValue.val());
+            object.binaryValue = Number(inputBinaryValue.val());
+
+            RED.tray.close();
+            //Timeout to allow the tray to close before updating the list
+            setTimeout(() => {
+              updateObjectList(device);
+            }, 500);
+          },
+        },
+      ]
+    });
+  }
+
+  // ==================================================
+  // ============ FORMAT DEVICE LIST ==================
+  // ==================================================
+
+  /**
+   * Format array device list to the final JSON
+   */
+   function formatArrayToJSON(node) {
+    saveGlobalConfig(node);
+    node.deviceList = {};
+    node.arrayDeviceList.forEach(arrayDevice => {
+      let device = formatDevice(node, arrayDevice);
+      node.deviceList[arrayDevice.deviceName] = device;
+    })
+  }
+
+  /**
+  * Format the device to fit in the final JSON
+  */
+  function formatDevice(node, arrayDevice) {
+    device = {
+      identity: {
+        maxDevNum: arrayDevice.maxDevNum
+      },
+      controller: {
+        debug: [arrayDevice.debug],
+        model: node.globalConfig.model,
+        ipAddress: node.globalConfig.ipAddress,
+        login: node.globalConfig.login,
+        password: node.globalConfig.password,
+        httpAuthentication: arrayDevice.httpAuthentication
+      },
+      lorawan: {
+        networkServer: node.globalConfig.networkServer,
+        downlinkPort: arrayDevice.downlinkPort,
+        flushDownlinkQueue: arrayDevice.flushDownlinkQueue,
+        chirpstack: {
+          grpcApiKey: node.globalConfig.grpcApiKey
+        },
+        actility:{
+          driver: {
+            pId: arrayDevice.pId,
+            mId: arrayDevice.mId,
+            ver: arrayDevice.ver
+          }
+        }
+      },
+      bacnet: {
+        offsetAV: arrayDevice.offsetAV,
+        offsetBV: arrayDevice.offsetBV,
+        instanceRangeAV: arrayDevice.instanceRangeAV,
+        instanceRangeBV: arrayDevice.instanceRangeBV,
+        objects: {}
+      },
+      mqtt: {
+        topicDownlink : {}
+      }
+    };
+
+    // Conditions
+    if (device.controller.debug[0] === "none") {
+      device.controller.debug[0] = null;
+    }
+
+    // Remove logins and passwords if protocol is not restAPIBacnet
+    if(node.globalConfig.protocol !== "restAPIBacnet"){
+      delete device.controller.model;
+      delete device.controller.login;
+      delete device.controller.password;
+    }
+
+    // Remove actility key if networkServer is not actility
+    if (node.networkServer !== "actility") {
+      delete device.lorawan.actility;
+    }
+
+    // Remove chirpstack key if networkServer is not chirpstack
+    if (node.networkServer !== "chirpstack") {
+      delete device.lorawan.chirpstack;
+    }
+
+    // Objects
+    arrayDevice.objects.forEach(arrayObject => {
+      let object = formatObject(node, arrayObject);
+      device.bacnet.objects[arrayObject.objectName] = object;
+    })
+    return device;
+  }
+
+  function formatObject(node, arrayObject){
+    let object = { ...arrayObject}
+    delete object.objectName;
+    object.range = [object.rangeMin, object.rangeMax];
+    delete object.rangeMin;
+    delete object.rangeMax;
+
+    if(object.dataDirection === "downlink"){
+      switch(object.downlinkStrategie){
+        case "compareToUplinkValue":
+              delete object.range;
+              break;
+            case "onChangeOfValueWithinRange":
+              delete object.uplinkToCompareWith;
+              break;
+            default:
+              delete object.uplinkToCompareWith;
+              delete object.range;
+              break;
+      }
+    } else {
+      delete object.downlinkStrategie;
+      delete object.uplinkToCompareWith;
+      delete object.range;
+    }
+
+    return object;
+  }
+
+  // ==================================================
+  // =============== IMPORT JSON TRAY =================
+  // ==================================================
+
+  function showImportJsonTray(node) {
+    var editorJson = null;
+
+    RED.tray.show({
+      title: "Import JSON Device List",
+      width: 400,
+      buttons: [
+        {
+          text: "Cancel",
+          click: function () {
+            RED.tray.close();
+          },
+        },
+        {
+          text: "Save",
+          class: "primary",
+          click: function () {
+            RED.tray.close();
+
+            let inputOveride = document.getElementById('checkbox-override-device-list');
+            const editorContent = jsonEditor.getValue();
+            const parsed = JSON.parse(editorContent);
+            node.deviceList = unformatJSON(parsed);
+            console.log(node.deviceList);
+
+            if (inputOveride.checked) {
+              node.deviceList = unformatJSON(parsed);
+            } else {
+              node.deviceList = [...node.deviceList, ...unformatJSON(parsed)];
+
+            }
+            //Timeout to allow the tray to close before updating the list
+            setTimeout(() => {
+              updateDeviceList();
+            }, 500);
+          },
+        },
+      ],
+      open: function (tray) {
+        let trayBody = tray.find(".red-ui-tray-body");
+        trayBody.html($("#import-from-json-template").html());
+        jsonEditor = monaco.editor.create(document.getElementById('json-device-list-editor'), {
+          value: JSON.stringify(formatJSON(deviceList), null, 2),
+          language: 'json',
+          theme: 'vs',
+          automaticLayout: true,
+          fontSize: 14
+        });
+      },
+    });
+  }
+
+  // ==================================================
+  // =============== TOOL TIPS ========================
+  // ==================================================
+
+  const tooltips = {
+    maxDevNum: "The maximum number of device for this Type of for this group.",
+    debug: "Debug level",
+    flushDownlinkQueue: "Whether you want to flush the downlink queue on your LNS for each downlink.",
+    downlinkPort: "The LoRaWAN downlink FPort for this object.",
+    offsetBV: "From which BACnet instance do you want to store the Binary Value BACnet objects?",
+    offsetAV: "From which BACnet instance do you want to store the Analog Value BACnet objects.",
+    instanceRangeBV: "The maximum number of Binary Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
+    instanceRangeAV: "The maximum number of Analog Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
+    lorawanPayloadName: "Le LoRaWAN payload name as it has been decoding by you LoRaWAN payload decoder or as it should be provided to your LoRaWAN paylaod encoder.",
+    dataDirection: "Is it a LoRaWAN payload to write to the BMS or a LoRaWAN paylaod to read from the BMS?",
+    defaultValue: "Default downlink value if the Object is created by the API REST.",
+    objectType: "Type of BACnet object (Analog Value or Binary Value)."
+  };
+
+  function setupTooltips() {
+    $(document).on("mouseover", ".tooltip-icon", function () {
+      const key = $(this).data("tooltip");
+      if (!key || !tooltips[key]) return;
+
+      $(".lorawan-tooltip").remove();
+
+      const tooltip = $("<div>")
+        .addClass("lorawan-tooltip")
+        .html(tooltips[key]);
+      $("body").append(tooltip);
+
+      const rect = this.getBoundingClientRect();
+      tooltip.css({
+        left: `${rect.left - 17}px`,
+        top: `${rect.top - tooltip.outerHeight() - 10}px`,
+      });
+
+      const removeTooltip = () => {
+        setTimeout(() => {
+          if (!tooltip.is(":hover") && !$(this).is(":hover")) {
+            tooltip.remove();
+          }
+        }, 200);
+      };
+
+      $(this).on("mouseout", removeTooltip);
+      tooltip.on("mouseout", removeTooltip);
+    });
+  }
 </script>
 
 <style>
@@ -858,328 +830,339 @@
   }
 </style>
 
+<!-- ============================================================
+     ==========         BASE NODE HTML TEMPLATE        ==========
+     ============================================================ -->
+
 <script type="text/html" data-template-name="device-configuration">
-  <div>
-    <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
-      <div class="form-row">
-        <h3><i class="fa fa-cog"></i> Global Configuration</h3>
-      </div>
-
-      <div class="form-row">
-        <label for="node-input-ipAddress" style="width: 120px"><i class="fa fa-globe"></i> IP Address</label>
-        <input type="text" id="node-input-ipAddress"/>
-      </div>
-
-      <div class="form-row">
-          <label for="node-input-networkServer" style="width: 120px">
-            <i class="fa fa-signal"></i> Network Server
-        </label>
-        <select id="node-input-networkServer">
-            <option value="tts">The Things Stack</option>
-            <option value="chirpstack">Chirpstack</option>
-            <option value="actility">Actility</option>
-        </select>
-      </div>
-
-      <div class="form-row">
-        <label for="node-input-protocol" style="width: 120px">
-          <i class="fa fa-plug"></i> Protocol
-        </label>
-        <select id="node-input-protocol">
-            <option value="restAPIBacnet">REST API BACnet</option>
-            <option value="bacnet">BACnet</option>
-            <!--
-              <option value="restAPIModbus">REST API Modbus</option>
-              <option value="modbus">Modbus</option>
-              <option value="restAPIModbus">REST API Modbus</option>
-              <option value="modbus">Modbus</option>
-            -->
-        </select>
-      </div>
-
-      <div class="form-row">
-        <label for="node-input-class" style="width: 120px">
-          <i class="fa fa-tag"></i> Class
-        </label>
-        <select id="node-input-class">
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-        </select>
-      </div>
-
-      <div id="chirpstack-config">
-        <div class="form-row">
-          <h3><i class="fa fa-cog"></i> Chirpstack configuration</h3>
-        </div>
-        <div class="form-row">
-          <label for="node-input-grpcApiKey" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
-          <input type="text" id="node-input-grpcApiKey"/>
-        </div>
-      </div>
-
-      <div id="bacnet-settings">
-        <div class="form-row">
-          <h3><i class="fa fa-cog"></i> Rest API BACnet Settings</h3>
-        </div>
-        <div class="form-row">
-          <label for="rest-api-bacnet-model" style="width: 120px">
-            <i class="fa fa-bolt"></i> API Model
-          </label>
-          <select id="rest-api-bacnet-model">
-              <option value="distechControlsV2">Distech Control v2</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="node-input-bacnetLogin" style="width: 120px"><i class="fa fa-user"></i> Login</label>
-          <input type="text" id="node-input-bacnetLogin" style="width: 70%"/>
-        </div>
-        <div class="form-row">
-          <label for="node-input-bacnetPassword" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
-          <input type="text" id="node-input-bacnetPassword" style="width: 70%"/>
-        </div>
-      </div>
-    </form>
+  <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
     <div class="form-row">
-      <h3><i class="fa fa-th-list"></i> Device list</h3>
+      <h3><i class="fa fa-cog"></i> Global Configuration</h3>
     </div>
 
     <div class="form-row">
-      <button id="node-input-import-device-list" class="red-ui-button" style="height: 35px; margin-left: 0px;">
-        <i class="fa fa-upload"></i> Import from JSON
-      </button>
+      <label for="input-ip-address" style="width: 120px"><i class="fa fa-globe"></i> IP Address</label>
+      <input type="text" id="input-ip-address"/>
     </div>
 
-    <div id="node-input-device-list-container"></div>
     <div class="form-row">
-      <button id="node-input-addDevice"><i class="fa fa-plus"></i> Add device</button>
+        <label for="select-network-server" style="width: 120px">
+          <i class="fa fa-signal"></i> Network Server
+      </label>
+      <select id="select-network-server">
+          <option value="tts">The Things Stack</option>
+          <option value="chirpstack">Chirpstack</option>
+          <option value="actility">Actility</option>
+      </select>
     </div>
+
+    <div class="form-row">
+      <label for="select-protocol" style="width: 120px">
+        <i class="fa fa-plug"></i> Protocol
+      </label>
+      <select id="select-protocol">
+          <option value="restAPIBacnet">REST API BACnet</option>
+          <option value="bacnet">BACnet</option>
+          <!--
+            <option value="restAPIModbus">REST API Modbus</option>
+            <option value="modbus">Modbus</option>
+            <option value="restAPIModbus">REST API Modbus</option>
+            <option value="modbus">Modbus</option>
+          -->
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label for="select-class" style="width: 120px">
+        <i class="fa fa-tag"></i> Class
+      </label>
+      <select id="select-class">
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+      </select>
+    </div>
+
+    <div id="chirpstack-config">
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> Chirpstack configuration</h3>
+      </div>
+      <div class="form-row">
+        <label for="input-grpc-api-key" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
+        <input type="text" id="input-grpc-api-key"/>
+      </div>
+    </div>
+
+    <div id="bacnet-settings">
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> Rest API BACnet Settings</h3>
+      </div>
+      <div class="form-row">
+        <label for="select-bacnet-api-model" style="width: 120px">
+          <i class="fa fa-bolt"></i> API Model
+        </label>
+        <select id="select-bacnet-api-model">
+            <option value="distechControlsV2">Distech Control v2</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="input-bacnet-login" style="width: 120px"><i class="fa fa-user"></i> Login</label>
+        <input type="text" id="input-bacnet-login" style="width: 70%"/>
+      </div>
+      <div class="form-row">
+        <label for="input-bacnet-password" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
+        <input type="text" id="input-bacnet-password" style="width: 70%"/>
+      </div>
+    </div>
+  </form>
+  <div class="form-row">
+    <h3><i class="fa fa-th-list"></i> Device list</h3>
+  </div>
+
+  <div class="form-row">
+    <button id="button-import-from-json" class="red-ui-button" style="height: 35px; margin-left: 0px;">
+      <i class="fa fa-upload"></i> Import from JSON
+    </button>
+  </div>
+
+  <div id="device-list-container"></div>
+  <div class="form-row">
+    <button id="button-add-device" class="editor-button"><i class="fa fa-plus"></i> Add device</button>
   </div>
 </script>
 
-<script type="text/html" id="import-device-list-template">
+<!-- ============================================================
+     ======== IMPORT DEVICE LIST FROM JSON TEMPLATE TRAY ========
+     ============================================================ -->
+
+<script type="text/html" id="import-from-json-template">
   <div class="form-horizontal" style="height: 660px; margin: 10px 20px;">
       <div class="form-row">
         <h3><i class="fa fa-upload"></i> Import device list from JSON</h3>
       </div>
       <div class="form-row">
-        <input type="checkbox" id="input-overide-device-list" style="margin: 0px; width: auto;" />
-        <label for="input-overide-device-list" style="width: 180px"> Overide previous device list</label>
+        <input type="checkbox" id="checkbox-override-device-list" style="margin: 0px; width: auto;" />
+        <label for="checkbox-override-device-list" style="width: 180px"> Overide previous device list</label>
       </div>
-      <div style="height: 70vh; width: 600px;" class="node-text-editor" id="json-device-list-input"></div>
+      <div style="height: 70vh; width: 600px;" class="node-text-editor" id="json-device-list-editor"></div>
   </div>
 </script>
 
-<script type="text/html" id="device-tray-template">
-  <div>
-    <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+<!-- ============================================================
+     ========     DEVICE CONFIGURATION TEMPLATE TRAY    =========
+     ============================================================ -->
 
-      <div class="form-row">
-        <h3><i class="fa fa-cog"></i><span id="node-device-config-title"> Device Configuration</span></h3>
-      </div>
-      
-      <div class="form-row">
-        <label for="node-input-mmax-dev-num" style="width: auto"><i class="fa fa-arrow-up"></i> Maximum Device Number</label>
-        <input type="number" id="node-input-max-dev-num" style="width: 80px; margin-left: 10px;"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="maxDevNum"></i>
-      </div>
+<script type="text/html" id="device-config-template">
+  <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
 
-      <div class="form-row">
-        <label for="node-input-debug" style="width: 120px">
-          <i class="fa fa-bug"></i> Debug
-        </label>
-        <select id="node-input-debug">
-            <option value="none">None</option>
-            <option value="all">All</option>
-            <option value="forceOn">Force On</option>
-            <option value="up">Up</option>
-            <option value="down">Down</option>
-            <option value="creation">Creation</option>
-            <option value="txTime">TxTime</option>
-        </select>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="debug"></i>
-      </div>
+    <div class="form-row">
+      <h3><i class="fa fa-cog"></i><span id="node-device-config-title"> Device Configuration</span></h3>
+    </div>
+    
+    <div class="form-row">
+      <label for="node-input-mmax-dev-num" style="width: auto"><i class="fa fa-arrow-up"></i> Maximum Device Number</label>
+      <input type="number" id="input-max-dev-num" style="width: 80px; margin-left: 10px;"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="maxDevNum"></i>
+    </div>
 
-      <div class="form-row">
-        <label for="node-input-flush-downlink-queue" style="width: auto">
-          <i class="fa fa-link"></i> Flush Downlink Queue
-        </label>
-        <select id="node-input-flush-downlink-queue">
-            <option value="true">True</option>
-            <option value="false">False</option>
-        </select>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="flushDownlinkQueue"></i>
-      </div>
+    <div class="form-row">
+      <label for="select-debug" style="width: 120px">
+        <i class="fa fa-bug"></i> Debug
+      </label>
+      <select id="select-debug">
+          <option value="none">None</option>
+          <option value="all">All</option>
+          <option value="forceOn">Force On</option>
+          <option value="up">Up</option>
+          <option value="down">Down</option>
+          <option value="creation">Creation</option>
+          <option value="txTime">TxTime</option>
+      </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="debug"></i>
+    </div>
 
-      <div class="form-row">
-        <label for="node-input-downlinkPort" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
-        <input type="number" id="node-input-downlinkPort" style="width: 80px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkPort"></i>
-      </div>
+    <div class="form-row">
+      <label for="select-flush-downlink-queue" style="width: auto">
+        <i class="fa fa-link"></i> Flush Downlink Queue
+      </label>
+      <select id="select-flush-downlink-queue">
+          <option value="true">True</option>
+          <option value="false">False</option>
+      </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="flushDownlinkQueue"></i>
+    </div>
+
+    <div class="form-row">
+      <label for="input-downlink-port" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
+      <input type="number" id="input-downlink-port" style="width: 80px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkPort"></i>
+    </div>
 
 
-      <div id="actility-configuration">
-        <div class="form-row">
-          <h3><i class="fa fa-cog"></i> Actility Configuration</h3>
-        </div>
-        <div class="form-row">
-          <label for="node-input-pId" style="width: 120px"><i class="fa fa-tag"></i> pId</label>
-          <input type="text" id="node-input-pId"/>
-        </div>
-        <div class="form-row">
-          <label for="node-input-mId" style="width: 120px"><i class="fa fa-tag"></i> mId</label>
-          <input type="text" id="node-input-mId"/>
-        </div>
-        <div class="form-row">
-          <label for="node-input-ver" style="width: 120px"><i class="fa fa-hashtag"></i> Ver</label>
-          <input type="text" id="node-input-ver"/>
-        </div>
+    <div id="actility-configuration">
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> Actility Configuration</h3>
       </div>
+      <div class="form-row">
+        <label for="input-pId" style="width: 60px"><i class="fa fa-tag"></i> pId</label>
+        <input type="text" id="input-pId" style="width: 80px"/>
+      </div>
+      <div class="form-row">
+        <label for="input-mId" style="width: 60px"><i class="fa fa-tag"></i> mId</label>
+        <input type="text" id="input-mId" style="width: 80px"/>
+      </div>
+      <div class="form-row">
+        <label for="input-ver" style="width: 60px"><i class="fa fa-hashtag"></i> Ver</label>
+        <input type="text" id="input-ver" style="width: 80px"/>
+      </div>
+    </div>
 
-      <div class="form-row">
-        <h3><i class="fa fa-th-list"></i> BACnet Object list</h3>
-      </div>
-      <div class="form-row">
-        <label for="node-input-offset-av" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset AV</label>
-        <input type="number" id="node-input-offset-av" style="width: 80px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="offsetAV"></i>
-      </div>
-      <div class="form-row">
-        <label for="node-input-offset-bv" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset BV</label>
-        <input type="number" id="node-input-offset-bv" style="width: 80px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="offsetBV"></i>
-      </div>
-      <div class="form-row">
-        <label for="node-input-instance-range-av" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range AV</label>
-        <input type="number" id="node-input-instance-range-av" style="width: 80px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeAV"></i>
-      </div>
-      <div class="form-row">
-        <label for="node-input-instance-range-bv" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range BV</label>
-        <input type="number" id="node-input-instance-range-bv" style="width: 80px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeBV"></i>
-      </div>
+    <div class="form-row">
+      <h3><i class="fa fa-th-list"></i> BACnet Object list</h3>
+    </div>
+    <div class="form-row">
+      <label for="input-offset-av" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset AV</label>
+      <input type="number" id="input-offset-av" style="width: 80px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="offsetAV"></i>
+    </div>
+    <div class="form-row">
+      <label for="input-offset-bv" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset BV</label>
+      <input type="number" id="input-offset-bv" style="width: 80px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="offsetBV"></i>
+    </div>
+    <div class="form-row">
+      <label for="input-instance-range-av" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range AV</label>
+      <input type="number" id="input-instance-range-av" style="width: 80px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeAV"></i>
+    </div>
+    <div class="form-row">
+      <label for="input-instance-range-bv" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range BV</label>
+      <input type="number" id="input-instance-range-bv" style="width: 80px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeBV"></i>
+    </div>
 
-      <div id="node-input-object-list-container"></div>
+    <div id="object-list-container"></div>
 
-      <div class="form-row">
-        <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px;">
-          <i class="fa fa-plus"></i> Add Object
-        </button>
-      </div>
-
-    </form>
+    <div class="form-row">
+      <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px;">
+        <i class="fa fa-plus"></i> Add Object
+      </button>
+    </div>
   </div>
 </script>
 
-<script type="text/html" id="object-tray-template">
-  <div>
-    <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+<!-- ============================================================
+     ========     OBJECT CONFIGURATION TEMPLATE TRAY    =========
+     ============================================================ -->
 
-      <div class="form-row">
-        <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Object Configuration</span></h3>
-      </div>
+<script type="text/html" id="object-config-template">
+  <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
+    <div class="form-row">
+      <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Object Configuration</span></h3>
+    </div>
 
-      <div class="form-row">
-        <label for="node-input-lorawan-payload-name" style="width: 180px"><i class="fa fa-tag"></i> LoRaWAN Payload name</label>
-        <input type="text" id="node-input-lorawan-payload-name" style="width: 265px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="lorawanPayloadName"></i>
-      </div>
+    <div class="form-row">
+      <label for="input-lorawan-payload-name" style="width: 180px"><i class="fa fa-tag"></i> LoRaWAN Payload name</label>
+      <input type="text" id="input-lorawan-payload-name" style="width: 265px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="lorawanPayloadName"></i>
+    </div>
 
-      <div class="form-row">
-        <label for="node-input-instance-num" style="width: 140px"><i class="fa fa-hashtag"></i> Instance num</label>
-        <input type="number" id="node-input-instance-num" style="width: 130px"/>
-      </div>
+    <div class="form-row">
+      <label for="input-instance-num" style="width: 140px"><i class="fa fa-hashtag"></i> Instance num</label>
+      <input type="number" id="input-instance-num" style="width: 130px"/>
+    </div>
 
+    <div class="form-row">
+      <label for="select-data-direction" style="width: 140px">
+        <i class="fa fa-rss"></i> Data direction
+      </label>
+      <select id="select-data-direction" style="width: 130px">
+          <option value="uplink">Uplink</option>
+          <option value="downlink">Downlink</option>
+      </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="dataDirection"></i>
+    </div>
+    <div class="form-row">
+      <label for="select-object-mode" style="width: 140px">
+        <i class="fa fa-toggle-up"></i> Object mode
+      </label>
+      <select id="select-object-mode" style="width: 130px">
+          <option value="auto">Auto</option>
+          <option value="manual">Manual</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label for="select-downlink-priority" style="width: 140px"><i class="fa fa-star"></i> Priority</label>
+      <select id="select-downlink-priority" style="width: 80px">
+          <option value="low">Low</option>
+          <option value="high">High</option>
+      </select>
+    </div>
+
+    <div id="downlink-strategies-container">
       <div class="form-row">
-        <label for="node-input-data-direction" style="width: 140px">
-          <i class="fa fa-rss"></i> Data direction
+        <label for="select-downlink-strategies" style="width: 140px">
+          <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
         </label>
-        <select id="node-input-data-direction" style="width: 130px">
-            <option value="uplink">Uplink</option>
-            <option value="downlink">Downlink</option>
-        </select>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="dataDirection"></i>
-      </div>
-      <div class="form-row">
-        <label for="node-input-object-mode" style="width: 140px">
-          <i class="fa fa-toggle-up"></i> Object mode
-        </label>
-        <select id="node-input-object-mode" style="width: 130px">
-            <option value="auto">Auto</option>
-            <option value="manual">Manual</option>
+        <select id="select-downlink-strategies" style="width: 300px">
+            <option value="onChangeOfValue">On change of value</option>
+            <option value="compareToUplinkValue">On compare to a LoRaWAN uplink value</option>
+            <option value="onChangeOfValueWithinRange">On change of value within range</option>
+            <option value="noDownlink">No downlink</option>
         </select>
       </div>
 
-      <div class="form-row">
-        <label for="select-downlink-priority" style="width: 140px"><i class="fa fa-star"></i> Priority</label>
-        <select id="select-downlink-priority" style="width: 80px">
-            <option value="low">Low</option>
-            <option value="high">High</option>
-        </select>
+      <div class="form-row" id="compare-uplink-value-container">
+        <label for="input-compare-uplink-value" style="width: 140px"><i class="fa fa-tag"></i> Uplink Value</label>
+        <input type="text" id="input-compare-uplink-value" style="width: 140px"/>
       </div>
 
-      <div id="downlink-strategies-container">
-        <div class="form-row">
-          <label for="node-input-downlink-strategies" style="width: 140px">
-            <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
-          </label>
-          <select id="node-input-downlink-strategies" style="width: 300px">
-              <option value="onChangeOfValue">On change of value</option>
-              <option value="compareToUplinkValue">On compare to a LoRaWAN uplink value</option>
-              <option value="onChangeOfValueWithinRange">On change of value within range</option>
-              <option value="noDownlink">No downlink</option>
-          </select>
-        </div>
-
-        <div class="form-row" id="input-compare-uplink-value-container">
-          <label for="input-compare-uplink-value" style="width: 140px"><i class="fa fa-tag"></i> Uplink Value</label>
-          <input type="text" id="input-compare-uplink-value" style="width: 140px"/>
-        </div>
-
-        <div class="form-row" id="input-change-value-range-container">
-          <label for="input-change-value-range" style="width: 140px"><i class="fa fa-arrows-h"></i> Value Range</label>
-          <input type="number" id="input-change-value-range-min" style="width: 80px"/>
-          <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
-          <input type="number" id="input-change-value-range-max" style="width: 80px"/>
-        </div>
+      <div class="form-row" id="change-value-range-container">
+        <label for="input-change-value-range" style="width: 140px"><i class="fa fa-arrows-h"></i> Value Range</label>
+        <input type="number" id="input-change-value-range-min" style="width: 80px"/>
+        <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
+        <input type="number" id="input-change-value-range-max" style="width: 80px"/>
       </div>
+    </div>
 
-      <div class="form-row">
-        <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Value configuration</span></h3>
-      </div>
+    <div class="form-row">
+      <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Value configuration</span></h3>
+    </div>
 
-      <div class="form-row">
-        <label for="node-input-object-type" style="width: 140px">
-          <i class="fa fa-asterisk"></i> Value type
-        </label>
-        <select id="node-input-object-type" style="width: 130px">
-            <option value="analogValue">Analog value</option>
-            <option value="binaryValue">Binary value</option>
-        </select>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="objectType"></i>
-      </div>
+    <div class="form-row">
+      <label for="select-object-type" style="width: 140px">
+        <i class="fa fa-asterisk"></i> Value type
+      </label>
+      <select id="select-object-type" style="width: 130px">
+          <option value="analogValue">Analog value</option>
+          <option value="binaryValue">Binary value</option>
+      </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="objectType"></i>
+    </div>
 
-      <div class="form-row" id="node-analog-value-container">
-        <label for="node-input-analog-value" style="width: 140px"><i class="fa fa-hashtag"></i> Value</label>
-        <input type="number" id="node-input-analog-value" style="width: 130px"/>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
-      </div>
+    <div class="form-row" id="node-analog-value-container">
+      <label for="input-analog-value" style="width: 140px"><i class="fa fa-hashtag"></i> Value</label>
+      <input type="number" id="input-analog-value" style="width: 130px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
+    </div>
 
-      <div class="form-row" id="node-binary-value-container">
-        <label for="node-input-binary-value" style="width: 140px">
-          <i class="fa fa-hashtag"></i> Value
-        </label>
-        <select id="node-input-binary-value" style="width: 130px">
-            <option value="0">0</option>
-            <option value="1">1</option>
-        </select>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
-      </div>
-
-    </form>
+    <div class="form-row" id="node-binary-value-container">
+      <label for="input-binary-value" style="width: 140px">
+        <i class="fa fa-hashtag"></i> Value
+      </label>
+      <select id="input-binary-value" style="width: 130px">
+          <option value="0">0</option>
+          <option value="1">1</option>
+      </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
+    </div>
   </div>
 </script>
+
+<!-- ============================================================
+     ================     NODE DESCRIPTION    ===================
+     ============================================================ -->
 
 <script type="text/x-red" data-help-name="device-configuration">
   <p>Device Configuration node</p>
