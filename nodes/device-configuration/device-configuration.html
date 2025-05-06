@@ -215,12 +215,159 @@
         device.bacnet.objects.push(object);
       }
 
+
+      /**
+       * Format array device list to json
+       */
+      function formatJSON(deviceList) {
+        // Device name to device format
+        let tmpDeviceList = {};
+        deviceList.forEach(element => {
+          const clone = JSON.parse(JSON.stringify(element)); // deep copy
+          const name = clone.deviceName;
+          delete clone.deviceName;
+
+          if (clone.controller.debug[0] === "none") {
+            clone.controller.debug[0] = null;
+          }
+
+          tmpDeviceList[name] = clone;
+        });
+
+        // Device objects array to json format
+        Object.values(tmpDeviceList).forEach((device) => {
+          let objectsArray = device.bacnet.objects;
+          delete device.bacnet.objectsCount;
+          device.bacnet.objects = {};
+          for (let i = 0; i < objectsArray.length; i++) {
+            obj = objectsArray[i];
+            let objectName = obj.objectName;
+            delete obj.objectName;
+            if (obj.dataDirection === "downlink") {
+              switch (obj.downlinkStrategie) {
+                case "compareToUplinkValue":
+                  delete obj.range;
+                  break;
+                case "onChangeOfValueWithinRange":
+                  delete obj.uplinkToCompareWith;
+                  break;
+                default:
+                  delete obj.uplinkToCompareWith;
+                  delete obj.range;
+                  break;
+              }
+            } else {
+              delete obj.downlinkStrategie;
+              delete obj.uplinkToCompareWith;
+              delete obj.range;
+            }
+            device.bacnet.objects[objectName] = obj;
+
+          }
+        });
+
+        // Remove logins and passwords if protocol is not restAPIBacnet
+        // And add httpAuthentication if protocol is restAPIBacnet
+        if (node.protocol === "restAPIBacnet") {
+          for (let device in tmpDeviceList) {
+            const authString = tmpDeviceList[device].controller.login + ':' + tmpDeviceList[device].controller.password;
+            tmpDeviceList[device].controller.httpAuthentication = "Basic " + btoa(authString);
+          }
+        } else {
+          for (let device in tmpDeviceList) {
+            delete tmpDeviceList[device].controller.model;
+            delete tmpDeviceList[device].controller.login;
+            delete tmpDeviceList[device].controller.password;
+          }
+        }
+
+        // Remove actility key if networkServer is not actility
+        if (node.networkServer !== "actility") {
+          for (let device in tmpDeviceList) {
+            delete tmpDeviceList[device].lorawan.actility;
+          }
+        }
+
+        // Remove chirpstack key if networkServer is not chirpstack
+        if (node.networkServer !== "chirpstack") {
+          for (let device in tmpDeviceList) {
+            delete tmpDeviceList[device].lorawan.chirpstack;
+          }
+        }
+        return tmpDeviceList;
+      }
+
+      /**
+       * Transform the JSON into an array
+       */
+      function unformatJSON(input) {
+        const defaultObjectProps = {
+          downlinkStrategie: "onChangeOfValue",
+          uplinkToCompareWith: "",
+          range: [0, 100],
+        };
+
+        const defaultLorawanProps = {
+          chirpstack: {
+            grpcApiKey: ""
+          },
+          actility: {
+            driver: {
+              pId: "",
+              mId: "",
+              ver: ""
+            }
+          }
+        };
+
+        const result = [];
+
+        for (const [deviceName, deviceData] of Object.entries(input)) {
+          const formattedDevice = {
+            deviceName,
+            identity: deviceData.identity || {},
+            controller: {
+              ...deviceData.controller,
+              httpAuthentication: undefined // Remove if exists
+            },
+            lorawan: {
+              ...deviceData.lorawan,
+              ...defaultLorawanProps
+            },
+            bacnet: {
+              ...deviceData.bacnet,
+              objectsCount: Object.keys(deviceData.bacnet?.objects || {}).length + 1,
+              objects: []
+            },
+            mqtt: deviceData.mqtt || {}
+          };
+
+          // Clean up controller by removing httpAuthentication
+          delete formattedDevice.controller.httpAuthentication;
+
+          // Format bacnet objects
+          const objects = deviceData.bacnet?.objects || {};
+          for (const [objectName, objectData] of Object.entries(objects)) {
+            formattedDevice.bacnet.objects.push({
+              objectName,
+              ...defaultObjectProps,
+              ...objectData
+            });
+          }
+
+          result.push(formattedDevice);
+        }
+
+        return result;
+      }
+
       /**
        * Update device list on the main tray
        * and add event listeners to the edit and delete buttons
        */
       function updateDeviceList() {
         $("#node-input-device-list-container").empty();
+        console.log(node.deviceList);
         node.deviceList.forEach(function (device, index) {
           var row = $("<div>")
             .addClass("form-row")
@@ -336,7 +483,7 @@
             $("#node-input-max-dev-num").val(device.identity.maxDevNum);
             $("#node-device-config-title").text(` ${device.deviceName} configuration`);
             $("#node-input-debug").val(device.controller.debug);
-            $("#node-input-flush-downlink-queue").val( String(device.lorawan.flushDownlinkQueue));
+            $("#node-input-flush-downlink-queue").val(String(device.lorawan.flushDownlinkQueue));
             $("#node-input-downlinkPort").val(device.lorawan.downlinkPort);
             $("#node-input-offset-av").val(device.bacnet.offsetAV);
             $("#node-input-offset-bv").val(device.bacnet.offsetBV);
@@ -524,7 +671,7 @@
               } else {
                 downlinkStrategiesContainer.show();
               }
-            } 
+            }
 
             function toggleDownlinkInput() {
               switch (downlinkStrategiesSelect.val()) {
@@ -574,7 +721,6 @@
       // ==================================================
 
       function showImportJsonTray(deviceList) {
-        var node = this; // Save `this` context (important!)
         var editorJson = null;
 
         RED.tray.show({
@@ -592,20 +738,38 @@
               class: "primary",
               click: function () {
                 RED.tray.close();
+
+                let inputOveride = document.getElementById('input-overide-device-list');
+                const editorContent = jsonEditor.getValue();
+                const parsed = JSON.parse(editorContent);
+                node.deviceList = unformatJSON(parsed);
+                console.log(node.deviceList);
+
+                if (inputOveride.checked) {
+                  node.deviceList = unformatJSON(parsed);
+                } else {
+                  node.deviceList = [...node.deviceList, ...unformatJSON(parsed)];
+
+                }
+                //Timeout to allow the tray to close before updating the list
+                setTimeout(() => {
+                  updateDeviceList();
+                }, 500);
               },
             },
           ],
           open: function (tray) {
             let trayBody = tray.find(".red-ui-tray-body");
             trayBody.html($("#import-device-list-template").html());
-            let jsonEditor = monaco.editor.create(document.getElementById('json-device-list-input'), {
-              value: JSON.stringify(deviceList, null, 2),
+            jsonEditor = monaco.editor.create(document.getElementById('json-device-list-input'), {
+              value: JSON.stringify(formatJSON(deviceList), null, 2),
               language: 'json',
               theme: 'vs',
               automaticLayout: true,
               fontSize: 14
             });
-
+            console.log(deviceList);
+            console.log(formatJSON(deviceList))
           },
         });
       }
@@ -779,13 +943,13 @@
     <div class="form-row">
       <h3><i class="fa fa-th-list"></i> Device list</h3>
     </div>
-<!-- 
+
     <div class="form-row">
       <button id="node-input-import-device-list" class="red-ui-button" style="height: 35px; margin-left: 0px;">
         <i class="fa fa-upload"></i> Import from JSON
       </button>
     </div>
-  -->
+
     <div id="node-input-device-list-container"></div>
     <div class="form-row">
       <button id="node-input-addDevice"><i class="fa fa-plus"></i> Add device</button>
@@ -794,13 +958,15 @@
 </script>
 
 <script type="text/html" id="import-device-list-template">
-  <div>
-    <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
+  <div class="form-horizontal" style="height: 660px; margin: 10px 20px;">
       <div class="form-row">
-        <h3><i class="fa fa-upload"></i> Import JSON</h3>
+        <h3><i class="fa fa-upload"></i> Import device list from JSON</h3>
       </div>
-      <div style="height: 100%; width: 600px;" class="node-text-editor" id="json-device-list-input"></div>
-    </div>
+      <div class="form-row">
+        <input type="checkbox" id="input-overide-device-list" style="margin: 0px; width: auto;" />
+        <label for="input-overide-device-list" style="width: 180px"> Overide previous device list</label>
+      </div>
+      <div style="height: 70vh; width: 600px;" class="node-text-editor" id="json-device-list-input"></div>
   </div>
 </script>
 
