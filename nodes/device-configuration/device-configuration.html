@@ -671,11 +671,19 @@
               delete object.range;
               break;
       }
-    } else {
       delete object.downlinkStrategie;
       delete object.uplinkToCompareWith;
       delete object.range;
+      if(object.objectType === "analogValue"){
+        object.value = object.analogValue;
+      } else if(object.objectType === "binaryValue"){
+        object.value = object.binaryValue
+      }
+    } else {
+      object.value = null;
     }
+    delete object.binaryValue;
+    delete object.analogValue;
 
     return object;
   }

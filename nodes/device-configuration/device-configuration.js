@@ -2,11 +2,24 @@ module.exports = function (RED) {
     function DeviceConfiguration(config) {
         RED.nodes.createNode(this, config);
         var node = this;
-
-        const global = node.context().global;
-        console.log(node.deviceList);
         
-        this.status({fill:"green",shape:"dot",text:"Configuration OK"});
+        setupStatus(this);
+        setupGlobalVariables(this);
+
+        node.on("input", function (msg) {
+            let deviceList = config.deviceList || {};
+            msg.payload = deviceList;
+            node.send(msg);
+        });
+
+    }
+
+    function setupStatus(node){
+        node.status({fill:"green",shape:"dot",text:"Configuration OK"});
+    }
+
+    function setupGlobalVariables(node){
+        const global = node.context().global;
 
         global.set('g_deviceList', node.deviceList);
         global.set('g_httpRequestTimeOut', 5000);
@@ -16,13 +29,6 @@ module.exports = function (RED) {
         global.set('g_chirp_topicUplinkSuffix', "/event/up");
         global.set('g_actility_topicDownlinkSuffix', "/downlink");
         global.set('g_actility_topicUplinkSuffix', "/uplink");
-
-        node.on("input", function (msg) {
-            let deviceList = config.deviceList || {};
-            msg.payload = deviceList;
-            node.send(msg);
-        });
-
     }
 
     RED.nodes.registerType("device-configuration", DeviceConfiguration);
