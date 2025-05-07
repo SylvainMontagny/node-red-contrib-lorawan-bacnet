@@ -427,7 +427,7 @@
       selectDataDirection,
       selectObjectType,
       inputInstanceNum,
-      selectObjectMode,
+      selectAssignementMode,
       selectDownlinkStrategies,
       inputCompareUplinkValue,
       inputRangeMin,
@@ -450,7 +450,7 @@
         selectDataDirection = $("#select-data-direction");
         selectObjectType = $("#select-object-type");
         inputInstanceNum = $("#input-instance-num");
-        selectObjectMode = $("#select-object-mode");
+        selectAssignementMode = $("#select-assignement-mode");
         selectDownlinkStrategies = $("#select-downlink-strategies");
         inputCompareUplinkValue = $("#input-compare-uplink-value");
         inputRangeMin = $("#input-change-value-range-min");
@@ -464,7 +464,7 @@
         selectDataDirection.val(object.dataDirection);
         selectObjectType.val(object.objectType);
         inputInstanceNum.val(object.instanceNum);
-        selectObjectMode.val(object.assignementMode);
+        selectAssignementMode.val(object.assignementMode);
         selectDownlinkStrategies.val(object.downlinkStrategie);
         inputCompareUplinkValue.val(object.uplinkToCompareWith);
         inputRangeMin.val(object.rangeMin);
@@ -477,6 +477,7 @@
         let analogContainer = $("#node-analog-value-container");
         let binaryContainer = $("#node-binary-value-container");
         let priorityContainer = $("#priority-container");
+        let spanInstanceNum = $("#span-instance-num")
 
         let downlinkStrategiesContainer = $("#downlink-strategies-container");
         let compareUplinkValueContainer = $("#compare-uplink-value-container");
@@ -533,6 +534,14 @@
           }
         }
 
+        function toggleInstanceNumText(){
+          if(selectAssignementMode.val() === "manual"){
+            spanInstanceNum.text("Instance Num")
+          } else if(selectAssignementMode.val() === "auto"){
+            spanInstanceNum.text("Instance Offset")
+          }
+        }
+
         selectDataDirection.on("change", function () {
           toggleValueField();
           toggleDownlinkStrategies();
@@ -547,11 +556,16 @@
           toggleDownlinkInput();
         });
 
+        selectAssignementMode.on("change", function () {
+          toggleInstanceNumText();
+        });
+
         // Init
         togglePriorityContainer();
         toggleValueField();
         toggleDownlinkInput();
         toggleDownlinkStrategies();
+        toggleInstanceNumText();
 
       },
       buttons: [
@@ -569,7 +583,7 @@
             object.dataDirection = selectDataDirection.val();
             object.objectType = selectObjectType.val();
             object.instanceNum = Number(inputInstanceNum.val());
-            object.assignementMode = selectObjectMode.val();
+            object.assignementMode = selectAssignementMode.val();
             object.downlinkStrategie = selectDownlinkStrategies.val();
             object.priority = selectPriority.val();
             object.rangeMin = Number(inputRangeMin.val());
@@ -1136,7 +1150,7 @@
     </div>
 
     <div class="form-row">
-      <label for="input-instance-num" style="width: 140px"><i class="fa fa-hashtag"></i> Instance num</label>
+      <label for="input-instance-num" style="width: 140px"><i class="fa fa-hashtag"></i> <span id="span-instance-num">Instance num</span></label>
       <input type="number" id="input-instance-num" style="width: 130px"/>
     </div>
 
@@ -1151,10 +1165,10 @@
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="dataDirection"></i>
     </div>
     <div class="form-row">
-      <label for="select-object-mode" style="width: 140px">
-        <i class="fa fa-toggle-up"></i> Object mode
+      <label for="select-assignement-mode" style="width: 140px">
+        <i class="fa fa-toggle-up"></i> Assignation mode
       </label>
-      <select id="select-object-mode" style="width: 130px">
+      <select id="select-assignement-mode" style="width: 130px">
           <option value="auto">Auto</option>
           <option value="manual">Manual</option>
       </select>
