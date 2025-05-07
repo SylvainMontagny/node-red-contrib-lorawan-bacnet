@@ -96,12 +96,12 @@
       // Buttons setup
 
       addDeviceBtn.click(function () {
-        createNewDevice(node);
+        addNewDevice(node);
         updateDeviceList(node);
       });
 
       importFromJsonBtn.on("click", function () {
-        //showImportJsonTray(node);
+        showImportJsonTray(node);
       });
 
       // Init
@@ -142,27 +142,33 @@
   // ==================================================
 
   /**
-  * Create a device object and adds it to the array device list
-  * Filled with default values
+  * Create a new device based on the base devise
+  * Filled with default values if not found in base device / no base device
+  * Base device is a device from a "formated" JSON device list
   */
-  function createNewDevice(node) {
+  function newDevice(node, baseDeviceName = null, baseDevice = {}) {
     let device = {
-      deviceName: `device-${node.deviceCount}`,
-      maxDevNum: 99,
-      debug: "all",
-      downlinkPort: 30,
-      flushDownlinkQueue: true,
-      class: "A",
-      pId: "",
-      mId: "",
-      ver: "",
-      offsetAV: 0,
-      offsetBV: 0,
-      instanceRangeAV: 10,
-      instanceRangeBV: 10,
+      deviceName: baseDeviceName || `device-${node.deviceCount}`,
+      maxDevNum: baseDevice.identity?.maxDevNum ?? 99,
+      debug: baseDevice.controller?.debug?.[0] ?? "all",
+      downlinkPort: baseDevice.lorawan?.downlinkPort ?? 30,
+      flushDownlinkQueue: baseDevice.lorawan?.flushDownlinkQueue ?? true,
+      class: baseDevice.lorawan?.class ?? "A",
+      pId: baseDevice.actility?.pId ?? "",
+      mId: baseDevice.actility?.mId ?? "",
+      ver: baseDevice.actility?.ver ?? "",
+      offsetAV: baseDevice.bacnet?.offsetAV ?? 0,
+      offsetBV: baseDevice.bacnet?.offsetBV ?? 0,
+      instanceRangeAV: baseDevice.bacnet?.instanceRangeAV ?? 10,
+      instanceRangeBV: baseDevice.bacnet?.instanceRangeBV ?? 10,
       objectsCount: 1,
       objects: [],
     };
+    return device;
+  }
+
+  function addNewDevice(node) {
+    let device = newDevice(node);
     node.arrayDeviceList.push(device);
     node.deviceCount++;
   }
@@ -282,7 +288,7 @@
 
         let addObjectBtn = $("#add-object-btn");
         addObjectBtn.on("click", function () {
-          createNewObject(device);
+          addNewObject(device);
           updateObjectList(device);
         });
 
@@ -328,25 +334,34 @@
   // ==================================================
 
   /**
-   * Create a new object for a device and adds it to the list of objects of the device
-   * Filled with default values
-   */
-  function createNewObject(device) {
+  * Create a new object for a device based on the base object
+  * Filled with default values if not found in base object / no base object
+  * base object is an object from a "formated" JSON device list
+  */
+  function newObject(device, baseObjectName = null, baseObject = {}) {
     let object = {
-      objectName: `object-${device.objectsCount}`,
-      lorawanPayloadName: "",
-      dataDirection: "uplink",
-      assignementMode: "auto",
-      downlinkStrategie: "onChangeOfValue",
-      instanceNum: 0,
-      priority: "low",
-      objectType: "analogValue",
-      uplinkToCompareWith: "",
-      rangeMin: 0,
-      rangeMax: 100,
-      binaryValue: 0,
-      analogValue: 0
+      objectName: baseObjectName || `object-${device.objectsCount}`,
+      lorawanPayloadName: baseObject.lorawanPayloadName ?? "payload-name",
+      dataDirection: baseObject.dataDirection ?? "uplink",
+      assignementMode: baseObject.assignementMode ?? "auto",
+      downlinkStrategie: baseObject.downlinkStrategie ?? "onChangeOfValue",
+      instanceNum: baseObject.instanceNum ?? 0,
+      priority: baseObject.priority ?? "low",
+      objectType: baseObject.objectType ?? "analogValue",
+      uplinkToCompareWith: baseObject.uplinkToCompareWith ?? "",
+      rangeMin: baseObject.range?.[0] ?? 0,
+      rangeMax: baseObject.range?.[1] ?? 100,
+      binaryValue: baseObject.value ?? 0,
+      analogValue: baseObject.value ?? 0
     };
+    return object
+  }
+
+  /**
+   * Add a new object it to the list of objects of the device
+   */
+  function addNewObject(device) {
+    let object = newObject(device);
     device.objectsCount++;
     device.objects.push(object);
   }
@@ -469,8 +484,8 @@
 
 
         // Toggles
-        function togglePriorityContainer(){
-          if(selectDataDirection.val() === "uplink"){
+        function togglePriorityContainer() {
+          if (selectDataDirection.val() === "uplink") {
             priorityContainer.show();
           } else {
             priorityContainer.hide();
@@ -580,7 +595,7 @@
   /**
    * Format array device list to the final JSON
    */
-   function formatArrayToJSON(node) {
+  function formatArrayToJSON(node) {
     saveGlobalConfig(node);
     node.deviceList = {};
     node.arrayDeviceList.forEach(arrayDevice => {
@@ -613,7 +628,7 @@
         chirpstack: {
           grpcApiKey: node.globalConfig.grpcApiKey
         },
-        actility:{
+        actility: {
           driver: {
             pId: arrayDevice.pId,
             mId: arrayDevice.mId,
@@ -629,7 +644,7 @@
         objects: {}
       },
       mqtt: {
-        topicDownlink : {}
+        topicDownlink: {}
       }
     };
 
@@ -639,7 +654,7 @@
     }
 
     // Remove logins and passwords if protocol is not restAPIBacnet
-    if(node.globalConfig.protocol !== "restAPIBacnet"){
+    if (node.globalConfig.protocol !== "restAPIBacnet") {
       delete device.controller.model;
       delete device.controller.login;
       delete device.controller.password;
@@ -663,39 +678,39 @@
     return device;
   }
 
-  function formatObject(node, arrayObject){
-    let object = { ...arrayObject}
+  function formatObject(node, arrayObject) {
+    let object = { ...arrayObject }
     delete object.objectName;
     object.range = [object.rangeMin, object.rangeMax];
     delete object.rangeMin;
     delete object.rangeMax;
 
-    if(object.dataDirection === "downlink"){
-      switch(object.downlinkStrategie){
+    if (object.dataDirection === "downlink") {
+      switch (object.downlinkStrategie) {
         case "compareToUplinkValue":
-              delete object.range;
-              break;
-            case "onChangeOfValueWithinRange":
-              delete object.uplinkToCompareWith;
-              break;
-            default:
-              delete object.uplinkToCompareWith;
-              delete object.range;
-              break;
+          delete object.range;
+          break;
+        case "onChangeOfValueWithinRange":
+          delete object.uplinkToCompareWith;
+          break;
+        default:
+          delete object.uplinkToCompareWith;
+          delete object.range;
+          break;
       }
       delete object.downlinkStrategie;
       delete object.uplinkToCompareWith;
       delete object.range;
 
       // Value based on type
-      if(object.objectType === "analogValue"){
+      if (object.objectType === "analogValue") {
         object.value = object.analogValue;
-      } else if(object.objectType === "binaryValue"){
+      } else if (object.objectType === "binaryValue") {
         object.value = object.binaryValue
       }
 
       delete object.class;
-    // Uplink
+      // Uplink
     } else {
       object.value = null;
     }
@@ -705,16 +720,57 @@
     return object;
   }
 
+  function unformatDeviceList(node, deviceList) {
+    let arrayDeviceList = [];
+
+    Object.entries(deviceList).forEach(([deviceName, device]) => {
+      let createdDevice = newDevice(node, deviceName, device);
+
+      Object.entries(device.bacnet?.objects ?? {}).forEach(([objectName, object]) => {
+        let createdObject = newObject(createdDevice, objectName, object);
+        createdDevice.objects.push(createdObject);
+      });
+
+      arrayDeviceList.push(createdDevice);
+    });
+
+    return arrayDeviceList;
+  }
+
   // ==================================================
   // =============== IMPORT JSON TRAY =================
   // ==================================================
 
   function showImportJsonTray(node) {
-    var editorJson = null;
+    let editorJson = null;
+    let inputOverride;
 
     RED.tray.show({
       title: "Import JSON Device List",
       width: 400,
+      open: function (tray) {
+        let trayBody = tray.find(".red-ui-tray-body");
+        trayBody.html($("#import-from-json-template").html());
+
+        inputOverride = $("#checkbox-override-device-list")
+        inputOverride.prop('checked', true);
+        
+        formatArrayToJSON(node);
+
+        jsonEditor = monaco.editor.create($("#json-device-list-editor")[0], {
+          value: JSON.stringify(node.deviceList, null, 2),
+          language: 'json',
+          theme: 'vs',
+          automaticLayout: true,
+          fontSize: 14
+        });
+      },
+      close: function () {
+        if (jsonEditor) {
+          jsonEditor.dispose();
+          jsonEditor = null;
+        }
+      },
       buttons: [
         {
           text: "Cancel",
@@ -728,35 +784,23 @@
           click: function () {
             RED.tray.close();
 
-            let inputOveride = document.getElementById('checkbox-override-device-list');
-            const editorContent = jsonEditor.getValue();
-            const parsed = JSON.parse(editorContent);
-            node.deviceList = unformatJSON(parsed);
-            console.log(node.deviceList);
-
-            if (inputOveride.checked) {
-              node.deviceList = unformatJSON(parsed);
+            let editorContent = jsonEditor.getValue();
+            let parsedDeviceList = JSON.parse(editorContent);
+            let newDevices = unformatDeviceList(node, parsedDeviceList);
+            if (inputOverride.prop("checked")) {
+              node.arrayDeviceList = newDevices;
             } else {
-              node.deviceList = [...node.deviceList, ...unformatJSON(parsed)];
+              node.arrayDeviceList = node.arrayDeviceList.concat(newDevices);
             }
+
+            jsonEditor.dispose();
             //Timeout to allow the tray to close before updating the list
             setTimeout(() => {
-              updateDeviceList();
+              updateDeviceList(node);
             }, 500);
           },
         },
-      ],
-      open: function (tray) {
-        let trayBody = tray.find(".red-ui-tray-body");
-        trayBody.html($("#import-from-json-template").html());
-        jsonEditor = monaco.editor.create(document.getElementById('json-device-list-editor'), {
-          value: JSON.stringify(formatJSON(deviceList), null, 2),
-          language: 'json',
-          theme: 'vs',
-          automaticLayout: true,
-          fontSize: 14
-        });
-      },
+      ]
     });
   }
 
@@ -866,7 +910,7 @@
 
     <div class="form-row">
       <label for="input-ip-address" style="width: 120px"><i class="fa fa-globe"></i> IP Address</label>
-      <input type="text" id="input-ip-address"/>
+      <input type="text" id="input-ip-address" style="width: 270px"/>
     </div>
 
     <div class="form-row">
@@ -920,11 +964,11 @@
       </div>
       <div class="form-row">
         <label for="input-bacnet-login" style="width: 120px"><i class="fa fa-user"></i> Login</label>
-        <input type="text" id="input-bacnet-login" style="width: 70%"/>
+        <input type="text" id="input-bacnet-login" style="width: 270px"/>
       </div>
       <div class="form-row">
         <label for="input-bacnet-password" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
-        <input type="text" id="input-bacnet-password" style="width: 70%"/>
+        <input type="text" id="input-bacnet-password" style="width: 270px"/>
       </div>
     </div>
   </form>
@@ -940,7 +984,7 @@
 
   <div id="device-list-container"></div>
   <div class="form-row">
-    <button id="button-add-device" class="editor-button"><i class="fa fa-plus"></i> Add device</button>
+    <button id="button-add-device" class="editor-button" style="margin-bottom: 10px"><i class="fa fa-plus"></i> Add device</button>
   </div>
 </script>
 
@@ -1068,7 +1112,7 @@
     <div id="object-list-container"></div>
 
     <div class="form-row">
-      <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px;">
+      <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px;" style="margin-bottom: 10px">
         <i class="fa fa-plus"></i> Add Object
       </button>
     </div>
