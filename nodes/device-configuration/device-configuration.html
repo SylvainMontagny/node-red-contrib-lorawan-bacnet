@@ -461,6 +461,7 @@
         // Containers
         let analogContainer = $("#node-analog-value-container");
         let binaryContainer = $("#node-binary-value-container");
+        let priorityContainer = $("#priority-container");
 
         let downlinkStrategiesContainer = $("#downlink-strategies-container");
         let compareUplinkValueContainer = $("#compare-uplink-value-container");
@@ -468,6 +469,14 @@
 
 
         // Toggles
+        function togglePriorityContainer(){
+          if(selectDataDirection.val() === "uplink"){
+            priorityContainer.show();
+          } else {
+            priorityContainer.hide();
+          }
+        }
+
         function toggleValueField() {
           if (selectDataDirection.val() === "uplink") {
             analogContainer.hide();
@@ -512,6 +521,7 @@
         selectDataDirection.on("change", function () {
           toggleValueField();
           toggleDownlinkStrategies();
+          togglePriorityContainer();
         });
 
         selectObjectType.on("change", function () {
@@ -523,6 +533,7 @@
         });
 
         // Init
+        togglePriorityContainer();
         toggleValueField();
         toggleDownlinkInput();
         toggleDownlinkStrategies();
@@ -675,11 +686,16 @@
       delete object.downlinkStrategie;
       delete object.uplinkToCompareWith;
       delete object.range;
+
+      // Value based on type
       if(object.objectType === "analogValue"){
         object.value = object.analogValue;
       } else if(object.objectType === "binaryValue"){
         object.value = object.binaryValue
       }
+
+      delete object.class;
+    // Uplink
     } else {
       object.value = null;
     }
@@ -722,7 +738,6 @@
               node.deviceList = unformatJSON(parsed);
             } else {
               node.deviceList = [...node.deviceList, ...unformatJSON(parsed)];
-
             }
             //Timeout to allow the tray to close before updating the list
             setTimeout(() => {
@@ -1101,7 +1116,7 @@
       </select>
     </div>
 
-    <div class="form-row">
+    <div class="form-row" id="priority-container">
       <label for="select-downlink-priority" style="width: 140px"><i class="fa fa-star"></i> Priority</label>
       <select id="select-downlink-priority" style="width: 80px">
           <option value="low">Low</option>
