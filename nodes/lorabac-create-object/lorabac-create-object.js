@@ -1,5 +1,5 @@
 module.exports = function (RED) {
-    function CreateDeviceObject(config) {
+    function LoRaBACCreateObject(config) {
         RED.nodes.createNode(this, config);
         var node = this;
         node.on('input', function (msg) {
@@ -199,5 +199,5 @@ module.exports = function (RED) {
         });
     }
 
-    RED.nodes.registerType("create device object", CreateDeviceObject);
+    RED.nodes.registerType("LoRaBAC create object", LoRaBACCreateObject);
 }

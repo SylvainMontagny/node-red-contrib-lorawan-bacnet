@@ -4,14 +4,14 @@ This Node-RED module provides custom nodes for integrating LoRaWAN devices with 
 
 ## Features
 
-- **Create Device Object Node**: Processes LoRaWAN messages and creates BACnet-compatible device objects.
+- **LoRaBAC Create Object Node**: Processes LoRaWAN messages and creates BACnet-compatible device objects.
 - **Device Configuration Node**: Provides a graphical interface for configuring devices and their BACnet objects.
 
 ## Nodes
 
-### 1. Create Device Object Node
+### 1. LoRaBAC Create Object Node
 
-The **Create Device Object Node** is responsible for:
+The **LoRaBAC Create Object Node** is responsible for:
 - Parsing incoming LoRaWAN messages from network servers (e.g., TTS, Chirpstack, Actility).
 - Extracting and validating device information.
 - Creating structured BACnet-compatible device objects.

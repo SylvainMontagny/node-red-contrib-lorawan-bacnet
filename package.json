@@ -18,7 +18,7 @@
   ],
   "node-red": {
     "nodes": {
-      "create-device-object": "nodes/create-device-object/create-device-object.js",
+      "lorabac-create-object": "nodes/lorabac-create-object/lorabac-create-object.js",
       "device-configuration": "nodes/device-configuration/device-configuration.js"
     }
   },
