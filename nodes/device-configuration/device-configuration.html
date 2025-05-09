@@ -341,7 +341,7 @@
       dataDirection: baseObject.dataDirection ?? "uplink",
       downlinkPort: baseObject.lorawan?.downlinkPort ?? 30,
       assignementMode: baseObject.assignementMode ?? "auto",
-      downlinkStrategie: baseObject.downlinkStrategie ?? "onChangeOfValue",
+      downlinkStrategy: baseObject.downlinkStrategy ?? "compareToUplinkObject",
       instanceNum: baseObject.instanceNum ?? 0,
       downlinkPortPriority: baseObject.downlinkPortPriority ?? "low",
       objectType: baseObject.objectType ?? "analogValue",
@@ -427,7 +427,7 @@
       inputInstanceNum,
       selectAssignementMode,
       selectDownlinkStrategies,
-      inputCompareUplinkValue,
+      inputCompareUplinkObject,
       inputRangeMin,
       inputRangeMax,
       selectPriority,
@@ -436,7 +436,7 @@
 
     RED.tray.show({
       title: "Configure object",
-      width: 400,
+      width: 570,
       open: function (tray) {
         // Fill with HTML template
         let trayBody = tray.find(".red-ui-tray-body");
@@ -451,7 +451,7 @@
         inputInstanceNum = $("#input-instance-num");
         selectAssignementMode = $("#select-assignement-mode");
         selectDownlinkStrategies = $("#select-downlink-strategies");
-        inputCompareUplinkValue = $("#input-compare-uplink-value");
+        inputCompareUplinkObject = $("#input-compare-uplink-value");
         inputRangeMin = $("#input-change-value-range-min");
         inputRangeMax = $("#input-change-value-range-max");
         selectPriority = $("#select-downlink-priority");
@@ -465,8 +465,8 @@
         selectObjectType.val(object.objectType);
         inputInstanceNum.val(object.instanceNum);
         selectAssignementMode.val(object.assignementMode);
-        selectDownlinkStrategies.val(object.downlinkStrategie);
-        inputCompareUplinkValue.val(object.uplinkToCompareWith);
+        selectDownlinkStrategies.val(object.downlinkStrategy);
+        inputCompareUplinkObject.val(object.uplinkToCompareWith);
         inputRangeMin.val(object.rangeMin);
         inputRangeMax.val(object.rangeMax);
         selectPriority.val(object.downlinkPortPriority);
@@ -481,8 +481,8 @@
 
         let downlinkConfigurationContainer = $("#downlink-configuration-container");
 
-        let compareUplinkValueContainer = $("#compare-uplink-value-container");
-        let onChangeOfValueWithinRangeContainer = $("#change-value-range-container");
+        let uplinkObjectContainer = $("#uplink-object-container");
+        let valueRangeContainer = $("#value-range-container");
 
 
         // Toggles
@@ -514,17 +514,21 @@
 
         function toggleDownlinkStrategiesInputs() {
           switch (selectDownlinkStrategies.val()) {
-            case "compareToUplinkValue":
-              compareUplinkValueContainer.show();
-              onChangeOfValueWithinRangeContainer.hide();
+            case "compareToUplinkObject":
+              uplinkObjectContainer.show();
+              valueRangeContainer.hide();
               break;
-            case "onChangeOfValueWithinRange":
-              compareUplinkValueContainer.hide();
-              onChangeOfValueWithinRangeContainer.show();
+            case "compareToUplinkObjectWithinRange":
+              uplinkObjectContainer.show();
+              valueRangeContainer.show();
               break;
+            // case "onChangeOfThisValue":
+            //   break;
+            // case "onChangeOfThisValueWithinRange":
+            //   break;
             default:
-              compareUplinkValueContainer.hide();
-              onChangeOfValueWithinRangeContainer.hide();
+              uplinkObjectContainer.hide();
+              valueRangeContainer.hide();
               break;
           }
         }
@@ -571,8 +575,10 @@
             object.objectType = selectObjectType.val();
             object.instanceNum = Number(inputInstanceNum.val());
             object.assignementMode = selectAssignementMode.val();
-            object.downlinkStrategie = selectDownlinkStrategies.val();
+            object.downlinkStrategy = selectDownlinkStrategies.val();
+            object.downlinkPort = inputDownlinkPort.val();
             object.downlinkPortPriority = selectPriority.val();
+            object.uplinkToCompareWith = inputCompareUplinkObject.val();
             object.rangeMin = Number(inputRangeMin.val());
             object.rangeMax = Number(inputRangeMax.val());
             object.analogValue = Number(inputAnalogValue.val());
@@ -686,21 +692,21 @@
     delete object.rangeMax;
 
     if (object.dataDirection === "downlink") {
-      switch (object.downlinkStrategie) {
-        case "compareToUplinkValue":
+      switch (object.downlinkStrategy) {
+        case "compareToUplinkObject":
           delete object.range;
           break;
-        case "onChangeOfValueWithinRange":
-          delete object.uplinkToCompareWith;
+        case "compareToUplinkObjectWithinRange":
           break;
+        // case "onChangeOfThisValue":
+        //   break;
+        // case "onChangeOfThisValueWithinRange":
+        //   break;
         default:
           delete object.uplinkToCompareWith;
           delete object.range;
           break;
       }
-      delete object.downlinkStrategie;
-      delete object.uplinkToCompareWith;
-      delete object.range;
 
       // Value based on type
       if (object.objectType === "analogValue") {
@@ -716,6 +722,9 @@
       object.value = null;
       delete object.downlinkPortPriority;
       delete object.downlinkPort;
+      delete object.downlinkStrategy;
+      delete object.uplinkToCompareWith;
+      delete object.range;
     }
 
     delete object.binaryValue;
@@ -1152,6 +1161,17 @@
     </div>
 
     <div class="form-row">
+      <label for="select-object-type" style="width: 140px">
+        <i class="fa fa-asterisk"></i> Value type
+      </label>
+      <select id="select-object-type" style="width: 130px">
+          <option value="analogValue">Analog value</option>
+          <option value="binaryValue">Binary value</option>
+      </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="objectType"></i>
+    </div>
+
+    <div class="form-row">
       <label for="select-assignement-mode" style="width: 140px">
         <i class="fa fa-toggle-up"></i> Assignation mode
       </label>
@@ -1201,35 +1221,24 @@
         <label for="select-downlink-strategies" style="width: 140px">
           <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
         </label>
-        <select id="select-downlink-strategies" style="width: 300px">
-            <option value="onChangeOfValue">On change of value</option>
-            <option value="compareToUplinkValue">On compare to a LoRaWAN uplink value</option>
-            <option value="onChangeOfValueWithinRange">On change of value within range</option>
-            <option value="noDownlink">No downlink</option>
+        <select id="select-downlink-strategies" style="width: 380px">
+            <option value="compareToUplinkObject">On compare to the following uplink Object</option>
+            <option value="compareToUplinkObjectWithinRange">On compare to the following uplink Object within range</option>
+            <option value="onChangeOfThisValue">On change of this value on the BMS</option>
+            <option value="onChangeOfThisValueWithinRange">On change of this value within range on the BMS</option>
         </select>
       </div>
 
-      <div class="form-row" id="compare-uplink-value-container">
-        <label for="input-compare-uplink-value" style="width: 140px"><i class="fa fa-tag"></i> Uplink Value</label>
+      <div class="form-row" id="uplink-object-container">
+        <label for="input-compare-uplink-object" style="width: 140px"><i class="fa fa-tag"></i> Uplink Object</label>
         <input type="text" id="input-compare-uplink-value" style="width: 140px"/>
       </div>
 
-      <div class="form-row" id="change-value-range-container">
+      <div class="form-row" id="value-range-container">
         <label for="input-change-value-range" style="width: 140px"><i class="fa fa-arrows-h"></i> Value Range</label>
         <input type="number" id="input-change-value-range-min" style="width: 80px"/>
         <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
         <input type="number" id="input-change-value-range-max" style="width: 80px"/>
-      </div>
-
-      <div class="form-row">
-        <label for="select-object-type" style="width: 140px">
-          <i class="fa fa-asterisk"></i> Value type
-        </label>
-        <select id="select-object-type" style="width: 130px">
-            <option value="analogValue">Analog value</option>
-            <option value="binaryValue">Binary value</option>
-        </select>
-        <i class="fa fa-question-circle tooltip-icon" data-tooltip="objectType"></i>
       </div>
 
       <div class="form-row" id="analog-value-container">
