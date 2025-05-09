@@ -1,5 +1,5 @@
 module.exports = function (RED) {
-    function DeviceConfiguration(config) {
+    function LoRaBACConfiguration(config) {
         RED.nodes.createNode(this, config);
         var node = this;
         
@@ -31,5 +31,5 @@ module.exports = function (RED) {
         global.set('g_actility_topicUplinkSuffix', "/uplink");
     }
 
-    RED.nodes.registerType("device-configuration", DeviceConfiguration);
+    RED.nodes.registerType("LoRaBAC configuration", LoRaBACConfiguration);
 };

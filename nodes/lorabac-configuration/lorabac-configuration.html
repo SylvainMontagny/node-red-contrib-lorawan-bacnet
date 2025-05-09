@@ -1,5 +1,5 @@
 <script type="text/javascript">
-  RED.nodes.registerType("device-configuration", {
+  RED.nodes.registerType("LoRaBAC configuration", {
     category: "LoRaBAC",
     color: "#00aff0",
     icon: "node-red/cog.svg",
@@ -24,7 +24,7 @@
     inputs: 1,
     outputs: 1,
     label: function () {
-      return "Device Configuration";
+      return "LoRaBAC Configuration";
     },
     oneditprepare: function () {
       var node = this;
@@ -933,7 +933,7 @@
      ==========         BASE NODE HTML TEMPLATE        ==========
      ============================================================ -->
 
-<script type="text/html" data-template-name="device-configuration">
+<script type="text/html" data-template-name="LoRaBAC configuration">
   <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
     <div class="form-row">
       <h3><i class="fa fa-cog"></i> Global Configuration</h3>
@@ -1266,6 +1266,6 @@
      ================     NODE DESCRIPTION    ===================
      ============================================================ -->
 
-<script type="text/x-red" data-help-name="device-configuration">
-  <p>Device Configuration node</p>
+<script type="text/x-red" data-help-name="LoRaBAC configuration">
+  <p>LoRaBAC Configuration node</p>
 </script>

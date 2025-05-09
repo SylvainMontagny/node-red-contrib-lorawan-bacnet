@@ -5,7 +5,7 @@ This Node-RED module provides custom nodes for integrating LoRaWAN devices with 
 ## Features
 
 - **LoRaBAC Create Object Node**: Processes LoRaWAN messages and creates BACnet-compatible device objects.
-- **Device Configuration Node**: Provides a graphical interface for configuring devices and their BACnet objects.
+- **LoRaBAC Configuration Node**: Provides a graphical interface for configuring devices and their BACnet objects.
 
 ## Nodes
 
@@ -20,9 +20,9 @@ The **LoRaBAC Create Object Node** is responsible for:
 
 ---
 
-### 2. Device Configuration Node
+### 2. LoRaBAC Configuration Node
 
-The **Device Configuration Node** provides a user-friendly interface for:
+The **LoRaBAC Configuration Node** provides a user-friendly interface for:
 - Configuring devices and their associated BACnet objects.
 - Managing device lists and creating new BACnet objects.
 - Supporting multiple network servers and protocols, including REST API BACnet and native BACnet.

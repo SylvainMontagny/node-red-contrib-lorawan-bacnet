@@ -19,7 +19,7 @@
   "node-red": {
     "nodes": {
       "lorabac-create-object": "nodes/lorabac-create-object/lorabac-create-object.js",
-      "device-configuration": "nodes/device-configuration/device-configuration.js"
+      "device-configuration": "nodes/lorabac-configuration/lorabac-configuration.js"
     }
   },
   "repository": {
