@@ -534,10 +534,10 @@
           }
         }
 
-        function toggleInstanceNumText(){
-          if(selectAssignementMode.val() === "manual"){
+        function toggleInstanceNumText() {
+          if (selectAssignementMode.val() === "manual") {
             spanInstanceNum.text("Instance Num")
-          } else if(selectAssignementMode.val() === "auto"){
+          } else if (selectAssignementMode.val() === "auto") {
             spanInstanceNum.text("Instance Offset")
           }
         }
@@ -756,8 +756,9 @@
   // ==================================================
 
   function showImportJsonTray(node) {
-    let editorJson = null;
+    let jsonEditor = null;
     let inputOverride;
+    let editorType;
 
     RED.tray.show({
       title: "Import JSON Device List",
@@ -766,22 +767,36 @@
         let trayBody = tray.find(".red-ui-tray-body");
         trayBody.html($("#import-from-json-template").html());
 
-        inputOverride = $("#checkbox-override-device-list")
+        inputOverride = $("#checkbox-override-device-list");
         inputOverride.prop('checked', true);
-        
+
         formatArrayToJSON(node);
 
-        jsonEditor = monaco.editor.create($("#json-device-list-editor")[0], {
-          value: JSON.stringify(node.deviceList, null, 2),
-          language: 'json',
-          theme: 'vs',
-          automaticLayout: true,
-          fontSize: 14
-        });
+        const editorContainer = $("#json-device-list-editor")[0];
+        editorType = RED.settings.codeEditor.lib || 'monaco';
+
+        if (editorType === 'monaco') {
+          jsonEditor = monaco.editor.create(editorContainer, {
+            value: JSON.stringify(node.deviceList, null, 2),
+            language: 'json',
+            theme: 'vs',
+            automaticLayout: true,
+            fontSize: 14
+          });
+        } else {
+          jsonEditor = ace.edit(editorContainer);
+          jsonEditor.setTheme("ace/theme/textmate");
+          jsonEditor.session.setMode("ace/mode/json");
+          jsonEditor.setValue(JSON.stringify(node.deviceList, null, 2), -1);
+        }
       },
       close: function () {
         if (jsonEditor) {
-          jsonEditor.dispose();
+          if (editorType === 'monaco') {
+            jsonEditor.dispose();
+          } else {
+            jsonEditor.destroy();
+          }
           jsonEditor = null;
         }
       },
@@ -798,17 +813,28 @@
           click: function () {
             RED.tray.close();
 
-            let editorContent = jsonEditor.getValue();
+            let editorContent;
+            if (editorType === 'monaco') {
+              editorContent = jsonEditor.getValue();
+            } else {
+              editorContent = jsonEditor.getValue();
+            }
+
             let parsedDeviceList = JSON.parse(editorContent);
             let newDevices = unformatDeviceList(node, parsedDeviceList);
+
             if (inputOverride.prop("checked")) {
               node.arrayDeviceList = newDevices;
             } else {
               node.arrayDeviceList = node.arrayDeviceList.concat(newDevices);
             }
 
-            jsonEditor.dispose();
-            //Timeout to allow the tray to close before updating the list
+            if (RED.settings.editorTheme?.codeEditor === 'monaco') {
+              jsonEditor.dispose();
+            } else {
+              jsonEditor.destroy();
+            }
+
             setTimeout(() => {
               updateDeviceList(node);
             }, 500);
