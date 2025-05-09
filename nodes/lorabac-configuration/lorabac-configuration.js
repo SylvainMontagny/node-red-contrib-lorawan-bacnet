@@ -8,10 +8,22 @@ module.exports = function (RED) {
 
         node.on("input", function (msg) {
             let deviceList = config.deviceList || {};
+
+            if(config.globalConfig.protocol === "restAPIBacnet"){
+                generateHttpAuthentication(deviceList);
+            }
+            
             msg.payload = deviceList;
             node.send(msg);
         });
 
+    }
+
+    function generateHttpAuthentication(deviceList){
+        for (let device in deviceList) {
+            const buffer = Buffer.from(deviceList[device].controller.login + ':' + deviceList[device].controller.password);
+            deviceList[device].controller.httpAuthentication = "Basic " + buffer.toString('base64');
+        }
     }
 
     function setupStatus(node){

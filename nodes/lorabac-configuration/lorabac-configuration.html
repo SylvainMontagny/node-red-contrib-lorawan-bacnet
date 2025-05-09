@@ -622,9 +622,10 @@
       controller: {
         debug: arrayDevice.debug,
         model: node.globalConfig.model,
+        protol: node.globalConfig.protocol,
         ipAddress: node.globalConfig.ipAddress,
-        login: node.globalConfig.login,
-        password: node.globalConfig.password,
+        login: node.globalConfig.bacnetLogin,
+        password: node.globalConfig.bacnetPassword,
         httpAuthentication: arrayDevice.httpAuthentication
       },
       lorawan: {
