@@ -149,10 +149,10 @@
   function newDevice(node, baseDeviceName = null, baseDevice = {}) {
     let device = {
       deviceName: baseDeviceName || `device-${node.deviceCount}`,
-      maxDevNum: baseDevice.identity?.maxDevNum ?? 99,
+      maxDevNum: baseDevice.identity?.maxDevNum ?? 10,
       debug: baseDevice.controller?.debug?.[0] ?? "all",
       downlinkPort: baseDevice.lorawan?.downlinkPort ?? 30,
-      flushDownlinkQueue: baseDevice.lorawan?.flushDownlinkQueue ?? true,
+      flushDownlinkQueue: baseDevice.lorawan?.flushDownlinkQueue ?? false,
       class: baseDevice.lorawan?.class ?? "A",
       pId: baseDevice.actility?.pId ?? "",
       mId: baseDevice.actility?.mId ?? "",
