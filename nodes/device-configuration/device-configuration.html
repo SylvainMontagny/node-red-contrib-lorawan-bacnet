@@ -152,7 +152,6 @@
       deviceName: baseDeviceName || `device-${node.deviceCount}`,
       maxDevNum: baseDevice.identity?.maxDevNum ?? 10,
       debug: baseDevice.controller?.debug?.[0] ?? "all",
-      downlinkPort: baseDevice.lorawan?.downlinkPort ?? 30,
       flushDownlinkQueue: baseDevice.lorawan?.flushDownlinkQueue ?? false,
       class: baseDevice.lorawan?.class ?? "A",
       pId: baseDevice.actility?.pId ?? "",
@@ -234,7 +233,6 @@
       inputMaxDevNum,
       selectDebug,
       selectFlushDownlinkQueue,
-      inputDownlinkPort,
       inputOffsetAV,
       inputOffsetBV,
       inputInstanceRangeAV,
@@ -257,7 +255,6 @@
         inputMaxDevNum = $("#input-max-dev-num");
         selectDebug = $("#select-debug");
         selectFlushDownlinkQueue = $("#select-flush-downlink-queue");
-        inputDownlinkPort = $("#input-downlink-port");
         inputOffsetAV = $("#input-offset-av");
         inputOffsetBV = $("#input-offset-bv");
         inputInstanceRangeAV = $("#input-instance-range-av");
@@ -271,7 +268,6 @@
         inputMaxDevNum.val(device.maxDevNum);
         selectDebug.val(device.debug);
         selectFlushDownlinkQueue.val(String(device.flushDownlinkQueue)); // To string conversion since it's a select
-        inputDownlinkPort.val(device.downlinkPort);
         inputOffsetAV.val(device.offsetAV);
         inputOffsetBV.val(device.offsetBV);
         inputInstanceRangeAV.val(device.instanceRangeAV);
@@ -310,7 +306,6 @@
             device.maxDevNum = Number(inputMaxDevNum.val());
             device.debug = selectDebug.val();
             device.flushDownlinkQueue = selectFlushDownlinkQueue.val() === "true"; // Convert to boolean based on string
-            device.downlinkPort = Number(inputDownlinkPort.val());
             device.offsetAV = Number(inputOffsetAV.val());
             device.offsetBV = Number(inputOffsetBV.val());
             device.instanceRangeAV = Number(inputInstanceRangeAV.val());
@@ -344,6 +339,7 @@
       objectName: baseObjectName || `object-${device.objectsCount}`,
       lorawanPayloadName: baseObject.lorawanPayloadName ?? "payload-name",
       dataDirection: baseObject.dataDirection ?? "uplink",
+      downlinkPort: baseObject.lorawan?.downlinkPort ?? 30,
       assignementMode: baseObject.assignementMode ?? "auto",
       downlinkStrategie: baseObject.downlinkStrategie ?? "onChangeOfValue",
       instanceNum: baseObject.instanceNum ?? 0,
@@ -426,6 +422,7 @@
   function showObjectTray(device, object) {
     let inputPayloadName,
       selectDataDirection,
+      inputDownlinkPort,
       selectObjectType,
       inputInstanceNum,
       selectAssignementMode,
@@ -449,6 +446,7 @@
         // Init input variables
         inputPayloadName = $("#input-lorawan-payload-name");
         selectDataDirection = $("#select-data-direction");
+        inputDownlinkPort = $("#input-downlink-port");
         selectObjectType = $("#select-object-type");
         inputInstanceNum = $("#input-instance-num");
         selectAssignementMode = $("#select-assignement-mode");
@@ -463,6 +461,7 @@
         // Fill inputs
         inputPayloadName.val(object.lorawanPayloadName);
         selectDataDirection.val(object.dataDirection);
+        inputDownlinkPort.val(object.downlinkPort);
         selectObjectType.val(object.objectType);
         inputInstanceNum.val(object.instanceNum);
         selectAssignementMode.val(object.assignementMode);
@@ -478,7 +477,8 @@
         let analogContainer = $("#node-analog-value-container");
         let binaryContainer = $("#node-binary-value-container");
         let priorityContainer = $("#priority-container");
-        let spanInstanceNum = $("#span-instance-num")
+        let spanInstanceNum = $("#span-instance-num");
+        let downlinkPortContainer = $("#downlink-port-container")
 
         let downlinkStrategiesContainer = $("#downlink-strategies-container");
         let compareUplinkValueContainer = $("#compare-uplink-value-container");
@@ -511,10 +511,10 @@
         }
 
         function toggleDownlinkStrategies() {
-          if (selectDataDirection.val() === "uplink") {
-            downlinkStrategiesContainer.hide();
-          } else {
+          if (selectDataDirection.val() === "downlink") {
             downlinkStrategiesContainer.show();
+          } else {
+            downlinkStrategiesContainer.hide();
           }
         }
 
@@ -543,10 +543,19 @@
           }
         }
 
+        function toggleDownlinkPort(){
+          if(selectDataDirection.val() == "downlink"){
+            downlinkPortContainer.show();
+          } else {
+            downlinkPortContainer.hide();
+          }
+        }
+
         selectDataDirection.on("change", function () {
           toggleValueField();
           toggleDownlinkStrategies();
           togglePriorityContainer();
+          toggleDownlinkPort();
         });
 
         selectObjectType.on("change", function () {
@@ -564,6 +573,7 @@
         // Init
         togglePriorityContainer();
         toggleValueField();
+        toggleDownlinkPort();
         toggleDownlinkInput();
         toggleDownlinkStrategies();
         toggleInstanceNumText();
@@ -582,6 +592,7 @@
           click: function () {
             object.lorawanPayloadName = inputPayloadName.val();
             object.dataDirection = selectDataDirection.val();
+            object.downlinkPort = Number(inputDownlinkPort.val());
             object.objectType = selectObjectType.val();
             object.instanceNum = Number(inputInstanceNum.val());
             object.assignementMode = selectAssignementMode.val();
@@ -637,7 +648,6 @@
       },
       lorawan: {
         networkServer: node.globalConfig.networkServer,
-        downlinkPort: arrayDevice.downlinkPort,
         flushDownlinkQueue: arrayDevice.flushDownlinkQueue,
         class: arrayDevice.class,
         chirpstack: {
@@ -729,7 +739,8 @@
     // Uplink
     } else {
       object.value = null;
-      delete object.priority
+      delete object.priority;
+      delete object.downlinkPort;
     }
     
     delete object.binaryValue;
@@ -1096,12 +1107,6 @@
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="flushDownlinkQueue"></i>
     </div>
 
-    <div class="form-row">
-      <label for="input-downlink-port" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
-      <input type="number" id="input-downlink-port" style="width: 80px"/>
-      <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkPort"></i>
-    </div>
-
 
     <div id="actility-configuration">
       <div class="form-row">
@@ -1172,6 +1177,16 @@
     </div>
 
     <div class="form-row">
+      <label for="select-assignement-mode" style="width: 140px">
+        <i class="fa fa-toggle-up"></i> Assignation mode
+      </label>
+      <select id="select-assignement-mode" style="width: 130px">
+          <option value="auto">Auto</option>
+          <option value="manual">Manual</option>
+      </select>
+    </div>
+
+    <div class="form-row">
       <label for="input-instance-num" style="width: 140px"><i class="fa fa-hashtag"></i> <span id="span-instance-num">Instance num</span></label>
       <input type="number" id="input-instance-num" style="width: 130px"/>
     </div>
@@ -1186,14 +1201,11 @@
       </select>
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="dataDirection"></i>
     </div>
-    <div class="form-row">
-      <label for="select-assignement-mode" style="width: 140px">
-        <i class="fa fa-toggle-up"></i> Assignation mode
-      </label>
-      <select id="select-assignement-mode" style="width: 130px">
-          <option value="auto">Auto</option>
-          <option value="manual">Manual</option>
-      </select>
+
+    <div class="form-row" id="downlink-port-container">
+      <label for="input-downlink-port" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
+      <input type="number" id="input-downlink-port" style="width: 80px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkPort"></i>
     </div>
 
     <div class="form-row" id="priority-container">
