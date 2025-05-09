@@ -798,8 +798,6 @@
         if (jsonEditor) {
           if (editorType === 'monaco') {
             jsonEditor.dispose();
-          } else {
-            jsonEditor.destroy();
           }
           jsonEditor = null;
         }
@@ -818,11 +816,7 @@
             RED.tray.close();
 
             let editorContent;
-            if (editorType === 'monaco') {
-              editorContent = jsonEditor.getValue();
-            } else {
-              editorContent = jsonEditor.getValue();
-            }
+            editorContent = jsonEditor.getValue();
 
             let parsedDeviceList = JSON.parse(editorContent);
             let newDevices = unformatDeviceList(node, parsedDeviceList);
@@ -833,10 +827,8 @@
               node.arrayDeviceList = node.arrayDeviceList.concat(newDevices);
             }
 
-            if (RED.settings.editorTheme?.codeEditor === 'monaco') {
+            if (editorType === 'monaco') {
               jsonEditor.dispose();
-            } else {
-              jsonEditor.destroy();
             }
 
             setTimeout(() => {
