@@ -48,13 +48,13 @@
       var addDeviceBtn = $("#button-add-device");
 
       // Restore the configuration
-      if (node.ipAddress) ipAddressInput.val(node.ipAddress);
-      if (node.networkServer) networkServerSelect.val(node.networkServer);
-      if (node.grpcApiKey) chirpstackGrpcApiKey.val(node.grpcApiKey);
-      if (node.protocol) protocolSelect.val(node.protocol);
-      if (node.model) modelSelect.val(node.model);
-      if (node.bacnetLogin) bacnetLoginInput.val(node.bacnetLogin);
-      if (node.bacnetPassword) bacnetPasswordInput.val(node.bacnetPassword);
+      if (node.globalConfig.ipAddress) ipAddressInput.val(node.globalConfig.ipAddress);
+      if (node.globalConfig.networkServer) networkServerSelect.val(node.globalConfig.networkServer);
+      if (node.globalConfig.grpcApiKey) chirpstackGrpcApiKey.val(node.globalConfig.grpcApiKey);
+      if (node.globalConfig.protocol) protocolSelect.val(node.globalConfig.protocol);
+      if (node.globalConfig.model) modelSelect.val(node.globalConfig.model);
+      if (node.globalConfig.bacnetLogin) bacnetLoginInput.val(node.globalConfig.bacnetLogin);
+      if (node.globalConfig.bacnetPassword) bacnetPasswordInput.val(node.globalConfig.bacnetPassword);
 
       // Toggle configurations inputs visibility
       function toggleChirpstackConfig() {
@@ -116,6 +116,7 @@
 
     oneditsave: function () {
       formatArrayToJSON(this);
+      console.log(this.globalConfig);
       console.log(this.deviceList);
 
       this.changed = true;
