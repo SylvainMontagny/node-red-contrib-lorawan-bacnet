@@ -343,7 +343,7 @@
       assignementMode: baseObject.assignementMode ?? "auto",
       downlinkStrategie: baseObject.downlinkStrategie ?? "onChangeOfValue",
       instanceNum: baseObject.instanceNum ?? 0,
-      priority: baseObject.priority ?? "low",
+      downlinkPortPriority: baseObject.downlinkPortPriority ?? "low",
       objectType: baseObject.objectType ?? "analogValue",
       uplinkToCompareWith: baseObject.uplinkToCompareWith ?? "",
       rangeMin: baseObject.range?.[0] ?? 0,
@@ -469,38 +469,32 @@
         inputCompareUplinkValue.val(object.uplinkToCompareWith);
         inputRangeMin.val(object.rangeMin);
         inputRangeMax.val(object.rangeMax);
-        selectPriority.val(object.priority);
+        selectPriority.val(object.downlinkPortPriority);
         inputAnalogValue.val(object.analogValue);
         inputBinaryValue.val(object.binaryValue);
 
         // Containers
-        let analogContainer = $("#node-analog-value-container");
-        let binaryContainer = $("#node-binary-value-container");
-        let priorityContainer = $("#priority-container");
         let spanInstanceNum = $("#span-instance-num");
-        let downlinkPortContainer = $("#downlink-port-container")
 
-        let downlinkStrategiesContainer = $("#downlink-strategies-container");
+        let analogContainer = $("#analog-value-container");
+        let binaryContainer = $("#binary-value-container");
+
+        let downlinkConfigurationContainer = $("#downlink-configuration-container");
+
         let compareUplinkValueContainer = $("#compare-uplink-value-container");
         let onChangeOfValueWithinRangeContainer = $("#change-value-range-container");
 
 
         // Toggles
-        function togglePriorityContainer() {
-          if (selectDataDirection.val() === "downlink") {
-            priorityContainer.show();
-          } else {
-            priorityContainer.hide();
+        function toggleInstanceNumText() {
+          if (selectAssignementMode.val() === "manual") {
+            spanInstanceNum.text("Instance Num")
+          } else if (selectAssignementMode.val() === "auto") {
+            spanInstanceNum.text("Instance Offset")
           }
         }
 
         function toggleValueField() {
-          if (selectDataDirection.val() === "uplink") {
-            analogContainer.hide();
-            binaryContainer.hide();
-            return;
-          }
-
           if (selectObjectType.val() === "analogValue") {
             analogContainer.show();
             binaryContainer.hide();
@@ -510,15 +504,15 @@
           }
         }
 
-        function toggleDownlinkStrategies() {
+        function toggleDownlinkConfiguration() {
           if (selectDataDirection.val() === "downlink") {
-            downlinkStrategiesContainer.show();
+            downlinkConfigurationContainer.show();
           } else {
-            downlinkStrategiesContainer.hide();
+            downlinkConfigurationContainer.hide();
           }
         }
 
-        function toggleDownlinkInput() {
+        function toggleDownlinkStrategiesInputs() {
           switch (selectDownlinkStrategies.val()) {
             case "compareToUplinkValue":
               compareUplinkValueContainer.show();
@@ -535,48 +529,29 @@
           }
         }
 
-        function toggleInstanceNumText() {
-          if (selectAssignementMode.val() === "manual") {
-            spanInstanceNum.text("Instance Num")
-          } else if (selectAssignementMode.val() === "auto") {
-            spanInstanceNum.text("Instance Offset")
-          }
-        }
-
-        function toggleDownlinkPort(){
-          if(selectDataDirection.val() == "downlink"){
-            downlinkPortContainer.show();
-          } else {
-            downlinkPortContainer.hide();
-          }
-        }
-
-        selectDataDirection.on("change", function () {
-          toggleValueField();
-          toggleDownlinkStrategies();
-          togglePriorityContainer();
-          toggleDownlinkPort();
+        selectAssignementMode.on("change", function () {
+          toggleInstanceNumText();
         });
 
         selectObjectType.on("change", function () {
           toggleValueField();
         });
 
-        selectDownlinkStrategies.on("change", function () {
-          toggleDownlinkInput();
+        selectDataDirection.on("change", function () {
+          toggleDownlinkConfiguration();
         });
 
-        selectAssignementMode.on("change", function () {
-          toggleInstanceNumText();
+        selectDownlinkStrategies.on("change", function () {
+          toggleDownlinkStrategiesInputs();
         });
+
+
 
         // Init
-        togglePriorityContainer();
-        toggleValueField();
-        toggleDownlinkPort();
-        toggleDownlinkInput();
-        toggleDownlinkStrategies();
         toggleInstanceNumText();
+        toggleValueField();
+        toggleDownlinkConfiguration();
+        toggleDownlinkStrategiesInputs();
 
       },
       buttons: [
@@ -597,7 +572,7 @@
             object.instanceNum = Number(inputInstanceNum.val());
             object.assignementMode = selectAssignementMode.val();
             object.downlinkStrategie = selectDownlinkStrategies.val();
-            object.priority = selectPriority.val();
+            object.downlinkPortPriority = selectPriority.val();
             object.rangeMin = Number(inputRangeMin.val());
             object.rangeMax = Number(inputRangeMax.val());
             object.analogValue = Number(inputAnalogValue.val());
@@ -736,13 +711,13 @@
 
       delete object.class;
 
-    // Uplink
+      // Uplink
     } else {
       object.value = null;
-      delete object.priority;
+      delete object.downlinkPortPriority;
       delete object.downlinkPort;
     }
-    
+
     delete object.binaryValue;
     delete object.analogValue;
 
@@ -1202,21 +1177,26 @@
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="dataDirection"></i>
     </div>
 
-    <div class="form-row" id="downlink-port-container">
-      <label for="input-downlink-port" style="width: 120px"><i class="fa fa-download"></i> Downlink port</label>
-      <input type="number" id="input-downlink-port" style="width: 80px"/>
-      <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkPort"></i>
-    </div>
+    <div id="downlink-configuration-container">
 
-    <div class="form-row" id="priority-container">
-      <label for="select-downlink-priority" style="width: 140px"><i class="fa fa-star"></i> Priority</label>
-      <select id="select-downlink-priority" style="width: 80px">
-          <option value="low">Low</option>
-          <option value="high">High</option>
-      </select>
-    </div>
+      <div class="form-row">
+        <h3><i class="fa fa-cog"></i> Downlink configuration</span></h3>
+      </div>
 
-    <div id="downlink-strategies-container">
+      <div class="form-row">
+        <label for="input-downlink-port" style="width: 140px"><i class="fa fa-download"></i> Downlink port</label>
+        <input type="number" id="input-downlink-port" style="width: 80px"/>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkPort"></i>
+      </div>
+
+      <div class="form-row">
+        <label for="select-downlink-priority" style="width: 140px"><i class="fa fa-star"></i> Priority</label>
+        <select id="select-downlink-priority" style="width: 80px">
+            <option value="low">Low</option>
+            <option value="high">High</option>
+        </select>
+      </div>
+
       <div class="form-row">
         <label for="select-downlink-strategies" style="width: 140px">
           <i class="fa fa-arrow-circle-o-right"></i> Downlink strategies
@@ -1240,38 +1220,35 @@
         <i class="fa fa-arrows-h" style="margin: 0 5px"></i>
         <input type="number" id="input-change-value-range-max" style="width: 80px"/>
       </div>
-    </div>
 
-    <div class="form-row">
-      <h3><i class="fa fa-cog"></i> <span id="node-object-config-title"> Value configuration</span></h3>
-    </div>
+      <div class="form-row">
+        <label for="select-object-type" style="width: 140px">
+          <i class="fa fa-asterisk"></i> Value type
+        </label>
+        <select id="select-object-type" style="width: 130px">
+            <option value="analogValue">Analog value</option>
+            <option value="binaryValue">Binary value</option>
+        </select>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="objectType"></i>
+      </div>
 
-    <div class="form-row">
-      <label for="select-object-type" style="width: 140px">
-        <i class="fa fa-asterisk"></i> Value type
-      </label>
-      <select id="select-object-type" style="width: 130px">
-          <option value="analogValue">Analog value</option>
-          <option value="binaryValue">Binary value</option>
-      </select>
-      <i class="fa fa-question-circle tooltip-icon" data-tooltip="objectType"></i>
-    </div>
+      <div class="form-row" id="analog-value-container">
+        <label for="input-analog-value" style="width: 140px"><i class="fa fa-hashtag"></i> Default Value</label>
+        <input type="number" id="input-analog-value" style="width: 130px"/>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
+      </div>
 
-    <div class="form-row" id="node-analog-value-container">
-      <label for="input-analog-value" style="width: 140px"><i class="fa fa-hashtag"></i> Value</label>
-      <input type="number" id="input-analog-value" style="width: 130px"/>
-      <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
-    </div>
+      <div class="form-row" id="binary-value-container">
+        <label for="input-binary-value" style="width: 140px">
+          <i class="fa fa-hashtag"></i> Default Value
+        </label>
+        <select id="input-binary-value" style="width: 130px">
+            <option value="0">0</option>
+            <option value="1">1</option>
+        </select>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
+      </div>
 
-    <div class="form-row" id="node-binary-value-container">
-      <label for="input-binary-value" style="width: 140px">
-        <i class="fa fa-hashtag"></i> Value
-      </label>
-      <select id="input-binary-value" style="width: 130px">
-          <option value="0">0</option>
-          <option value="1">1</option>
-      </select>
-      <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
     </div>
   </div>
 </script>
