@@ -151,7 +151,7 @@
     let device = {
       deviceName: baseDeviceName || `device-${node.deviceCount}`,
       maxDevNum: baseDevice.identity?.maxDevNum ?? 10,
-      debug: baseDevice.controller?.debug?.[0] ?? "all",
+      debug: baseDevice.controller?.debug ?? "all",
       flushDownlinkQueue: baseDevice.lorawan?.flushDownlinkQueue ?? false,
       class: baseDevice.lorawan?.class ?? "A",
       pId: baseDevice.actility?.pId ?? "",
@@ -614,7 +614,7 @@
         maxDevNum: arrayDevice.maxDevNum
       },
       controller: {
-        debug: [arrayDevice.debug],
+        debug: arrayDevice.debug,
         model: node.globalConfig.model,
         ipAddress: node.globalConfig.ipAddress,
         login: node.globalConfig.login,
@@ -649,8 +649,8 @@
     };
 
     // Conditions
-    if (device.controller.debug[0] === "none") {
-      device.controller.debug[0] = null;
+    if (device.controller.debug === "none") {
+      device.controller.debug = null;
     }
 
     // Remove logins and passwords if protocol is not restAPIBacnet
