@@ -228,6 +228,7 @@
    * Open a new tray to configure a device
    */
   function showDeviceTray(node, device) {
+    saveGlobalConfig(node);
     // Input variables
     let selectClass,
       inputMaxDevNum,
@@ -286,10 +287,10 @@
         let addObjectBtn = $("#add-object-btn");
         addObjectBtn.on("click", function () {
           addNewObject(device);
-          updateObjectList(device);
+          updateObjectList(node, device);
         });
 
-        updateObjectList(device);
+        updateObjectList(node, device);
       },
       buttons: [
         {
@@ -367,7 +368,7 @@
   * Update device list on the main tray
   * and add event listeners to the edit and delete buttons
   */
-  function updateObjectList(device) {
+  function updateObjectList(node, device) {
     const objectListContainer = $("#object-list-container");
     objectListContainer.empty();
     device.objects.forEach(function (object, index) {
@@ -395,7 +396,7 @@
         .css("margin-left", "10px")
         .addClass("red-ui-button")
         .click(function () {
-          showObjectTray(device, object);
+          showObjectTray(node, device, object);
         })
         .appendTo(row);
 
@@ -406,7 +407,7 @@
         .addClass("red-ui-button")
         .click(function () {
           device.objects.splice(index, 1);
-          updateObjectList(device);
+          updateObjectList(node, device);
         })
         .appendTo(row);
     });
@@ -419,7 +420,7 @@
   /**
   * Open a new tray to configure an object
   */
-  function showObjectTray(device, object) {
+  function showObjectTray(node, device, object) {
     let inputPayloadName,
       selectDataDirection,
       inputDownlinkPort,
@@ -495,7 +496,10 @@
         }
 
         function toggleValueField() {
-          if (selectObjectType.val() === "analogValue") {
+          if(node.globalConfig.protocol === "restAPIBacnet"){
+            analogContainer.hide();
+            binaryContainer.hide();
+          }else if (selectObjectType.val() === "analogValue") {
             analogContainer.show();
             binaryContainer.hide();
           } else if (selectObjectType.val() === "binaryValue") {
@@ -549,8 +553,6 @@
           toggleDownlinkStrategiesInputs();
         });
 
-
-
         // Init
         toggleInstanceNumText();
         toggleValueField();
@@ -587,7 +589,7 @@
             RED.tray.close();
             //Timeout to allow the tray to close before updating the list
             setTimeout(() => {
-              updateObjectList(device);
+              updateObjectList(node, device);
             }, 500);
           },
         },
