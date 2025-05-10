@@ -249,7 +249,8 @@
         // Fill with HTML template
         let trayBody = tray.find(".red-ui-tray-body");
         trayBody.html($("#device-config-template").html());
-        $("#node-device-config-title").text(`"${device.deviceName}" device configuration`); // Set title
+        $("#device-config-title").text(`"${device.deviceName}" device configuration`); // Set title
+        $("#instance-num-settings-title").text(`Instance Num settings for "${device.deviceName}"`);
 
         // Init input variables
         selectClass = $("#select-class");
@@ -442,7 +443,7 @@
         // Fill with HTML template
         let trayBody = tray.find(".red-ui-tray-body");
         trayBody.html($("#object-config-template").html());
-        $("#node-object-config-title").text(`"${object.objectName}" object configuration`);
+        $("#object-config-title").text(`"${object.objectName}" object configuration`);
 
         // Init input variables
         inputPayloadName = $("#input-lorawan-payload-name");
@@ -1048,7 +1049,7 @@
   <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
 
     <div class="form-row">
-      <h3><i class="fa fa-cog"></i> <span id="node-device-config-title">Device Configuration</span></h3>
+      <h3><i class="fa fa-cog"></i> <span id="device-config-title">Device Configuration</span></h3>
     </div>
 
     <div class="form-row">
@@ -1057,12 +1058,11 @@
       </label>
       <select id="select-debug">
           <option value="none">None</option>
-          <option value="all">All</option>
-          <option value="forceOn">Force On</option>
-          <option value="up">Up</option>
-          <option value="down">Down</option>
-          <option value="creation">Creation</option>
-          <option value="txTime">TxTime</option>
+          <option value="all">All events</option>
+          <option value="up">Only uplink events</option>
+          <option value="down">Only downlink events</option>
+          <option value="creation">Only creation events</option>
+          <option value="txTime">Only print TX time</option>
       </select>
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="debug"></i>
     </div>
@@ -1115,8 +1115,9 @@
     </div>
 
     <div class="form-row">
-      <h3><i class="fa fa-th-list"></i> BACnet Object list</h3>
+      <h3><i class="fa fa-cog"></i> <span id="instance-num-settings-title">Instance num settings</span></h3>
     </div>
+
     <div class="form-row">
       <label for="input-offset-av" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset AV</label>
       <input type="number" id="input-offset-av" style="width: 80px"/>
@@ -1138,6 +1139,10 @@
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeBV"></i>
     </div>
 
+    <div class="form-row">
+      <h3><i class="fa fa-th-list"></i> BACnet Object list</h3>
+    </div>
+
     <div id="object-list-container"></div>
 
     <div class="form-row">
@@ -1155,7 +1160,7 @@
 <script type="text/html" id="object-config-template">
   <div id="device-config" class="form-horizontal" autocomplete="off" style="height: 660px; margin: 10px 20px;">
     <div class="form-row">
-      <h3><i class="fa fa-cog"></i> <span id="node-object-config-title">Object Configuration</span></h3>
+      <h3><i class="fa fa-cog"></i> <span id="object-config-title">Object Configuration</span></h3>
     </div>
 
     <div class="form-row">
