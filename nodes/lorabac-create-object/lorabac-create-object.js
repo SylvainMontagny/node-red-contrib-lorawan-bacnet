@@ -3,6 +3,8 @@ module.exports = function (RED) {
         RED.nodes.createNode(this, config);
         var node = this;
         node.on('input', function (msg) {
+            const flow = node.context().flow;
+            
             let deviceList = flow.get('g_deviceList');
             let networkServer;
             let deviceName, deviceType, deviceNum, devEUI, topicDownlink;
