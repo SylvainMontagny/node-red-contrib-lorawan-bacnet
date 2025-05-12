@@ -174,6 +174,15 @@
   }
 
   /**
+  * Return if the device has at least one downlink object
+  */
+  function hasDownlinkObject(device) {
+    return device.objects.some(function(object) {
+      return object.dataDirection === "downlink";
+    });
+  }
+
+  /**
    * Update device list on the main tray
    * and add event listeners to the edit and delete buttons
    */
@@ -261,9 +270,9 @@
         inputOffsetBV = $("#input-offset-bv");
         inputInstanceRangeAV = $("#input-instance-range-av");
         inputInstanceRangeBV = $("#input-instance-range-bv");
-        inputPId = $("#input-pId");
-        inputMId = $("#input-mId");
-        inputVer = $("#input-ver");
+        inputPId = $("#input-pId-device");
+        inputMId = $("#input-mId-device");
+        inputVer = $("#input-ver-device");
 
         // Fill inputs
         selectClass.val(device.class);
@@ -278,12 +287,18 @@
         inputMId.val(device.mId);
         inputVer.val(device.ver);
 
-        let actilityConfiguration = $("#actility-configuration");
-        if (node.networkServer === "actility") {
-          actilityConfiguration.show();
-        } else {
-          actilityConfiguration.hide();
-        }
+        // Save dynamically actility settings
+        inputPId.on("blur", function() {
+            device.pId = inputPId.val();
+        });
+
+        inputMId.on("blur", function() {
+            device.mId = inputMId.val();
+        });
+
+        inputVer.on("blur", function() {
+            device.ver = inputVer.val();
+        });
 
         let addObjectBtn = $("#add-object-btn");
         addObjectBtn.on("click", function () {
@@ -312,9 +327,6 @@
             device.offsetBV = Number(inputOffsetBV.val());
             device.instanceRangeAV = Number(inputInstanceRangeAV.val());
             device.instanceRangeBV = Number(inputInstanceRangeBV.val());
-            device.pId = inputPId.val();
-            device.mId = inputMId.val();
-            device.ver = inputVer.val();
 
             RED.tray.close();
             //Timeout to allow the tray to close before updating the list
@@ -372,19 +384,31 @@
   function updateObjectList(node, device) {
     const objectListContainer = $("#object-list-container");
     objectListContainer.empty();
+
+    // Toggle actility container
+    const actilityConfigurationContainer = $('#actility-configuration-device')
+    if(node.globalConfig.networkServer === "actility" && hasDownlinkObject(device)){
+      actilityConfigurationContainer.show();
+      $("#input-pId-device").val(device.pId);
+      $("#input-mId-device").val(device.mId);
+      $("#input-ver-device").val(device.ver);
+    } else {
+      actilityConfigurationContainer.hide();
+    }
+
     device.objects.forEach(function (object, index) {
       const row = $("<div>")
-        .addClass("form-row")
-        .appendTo(objectListContainer);
+      .addClass("form-row")
+      .appendTo(objectListContainer);
 
       // Object name input
       const objectNameInput = $("<input>")
-        .attr({
-          type: "text",
-          value: object.objectName,
-          class: "node-input-list-item",
-        })
-        .appendTo(row);
+      .attr({
+        type: "text",
+        value: object.objectName,
+        class: "node-input-list-item",
+      })
+      .appendTo(row);
 
       // Update device name input when leaving input
       objectNameInput.on("input", function () {
@@ -393,24 +417,24 @@
 
       // Edit button
       $("<button>")
-        .html(`<i class="fa fa-pencil"></i>`)
-        .css("margin-left", "10px")
-        .addClass("red-ui-button")
-        .click(function () {
-          showObjectTray(node, device, object);
-        })
-        .appendTo(row);
+      .html(`<i class="fa fa-pencil"></i>`)
+      .css("margin-left", "10px")
+      .addClass("red-ui-button")
+      .click(function () {
+        showObjectTray(node, device, object);
+      })
+      .appendTo(row);
 
       // Delete button
       $("<button>")
-        .css("margin-left", "10px")
-        .html(`<i class="fa fa-trash"></i>`)
-        .addClass("red-ui-button")
-        .click(function () {
-          device.objects.splice(index, 1);
-          updateObjectList(node, device);
-        })
-        .appendTo(row);
+      .css("margin-left", "10px")
+      .html(`<i class="fa fa-trash"></i>`)
+      .addClass("red-ui-button")
+      .click(function () {
+        device.objects.splice(index, 1);
+        updateObjectList(node, device);
+      })
+      .appendTo(row);
     });
   }
 
@@ -434,7 +458,10 @@
       inputRangeMax,
       selectPriority,
       inputAnalogValue,
-      inputBinaryValue;
+      inputBinaryValue,
+      inputPId,
+      inputMId,
+      inputVer;
 
     RED.tray.show({
       title: "Configure object",
@@ -459,6 +486,9 @@
         selectPriority = $("#select-downlink-priority");
         inputAnalogValue = $("#input-analog-value");
         inputBinaryValue = $("#input-binary-value");
+        inputPId = $("#input-pId-device");
+        inputMId = $("#input-mId-device");
+        inputVer = $("#input-ver-device");
 
         // Fill inputs
         inputPayloadName.val(object.lorawanPayloadName);
@@ -475,6 +505,11 @@
         inputAnalogValue.val(object.analogValue);
         inputBinaryValue.val(object.binaryValue);
 
+        inputPId.val(device.pId);
+        inputMId.val(device.mId);
+        inputVer.val(device.ver);
+
+
         // Containers
         let spanInstanceNum = $("#span-instance-num");
 
@@ -482,7 +517,7 @@
         let binaryContainer = $("#binary-value-container");
 
         let downlinkConfigurationContainer = $("#downlink-configuration-container");
-
+        let actilityConfigurationContainer = $("#actility-configuration-object");
         let uplinkObjectContainer = $("#uplink-object-container");
         let valueRangeContainer = $("#value-range-container");
 
@@ -512,6 +547,11 @@
         function toggleDownlinkConfiguration() {
           if (selectDataDirection.val() === "downlink") {
             downlinkConfigurationContainer.show();
+            if(node.globalConfig.networkServer === "actility"){
+              actilityConfigurationContainer.show();
+            } else {
+              actilityConfigurationContainer.hide();
+            }
           } else {
             downlinkConfigurationContainer.hide();
           }
@@ -590,6 +630,10 @@
             object.rangeMax = Number(inputRangeMax.val());
             object.analogValue = Number(inputAnalogValue.val());
             object.binaryValue = Number(inputBinaryValue.val());
+
+            device.pId = inputPId.val();
+            device.mId = inputMId.val();
+            device.ver = inputVer.val();
 
             RED.tray.close();
             //Timeout to allow the tray to close before updating the list
@@ -675,8 +719,8 @@
       delete device.controller.password;
     }
 
-    // Remove actility key if networkServer is not actility
-    if (node.networkServer !== "actility") {
+    // Remove actility key if networkServer is not actility and no downlink objects
+    if (!(node.networkServer === "actility" && hasDownlinkObject(arrayDevice))) {
       delete device.lorawan.actility;
     }
 
@@ -1100,21 +1144,21 @@
     </div>
 
 
-    <div id="actility-configuration">
+    <div id="actility-configuration-device">
       <div class="form-row">
         <h3><i class="fa fa-cog"></i> Actility Configuration</h3>
       </div>
       <div class="form-row">
-        <label for="input-pId" style="width: 60px"><i class="fa fa-tag"></i> pId</label>
-        <input type="text" id="input-pId" style="width: 80px"/>
+        <label for="input-pId-device" style="width: 60px"><i class="fa fa-tag"></i> pId</label>
+        <input type="text" id="input-pId-device" style="width: 80px"/>
       </div>
       <div class="form-row">
-        <label for="input-mId" style="width: 60px"><i class="fa fa-tag"></i> mId</label>
-        <input type="text" id="input-mId" style="width: 80px"/>
+        <label for="input-mId-device" style="width: 60px"><i class="fa fa-tag"></i> mId</label>
+        <input type="text" id="input-mId-device" style="width: 80px"/>
       </div>
       <div class="form-row">
-        <label for="input-ver" style="width: 60px"><i class="fa fa-hashtag"></i> Ver</label>
-        <input type="text" id="input-ver" style="width: 80px"/>
+        <label for="input-ver-device" style="width: 60px"><i class="fa fa-hashtag"></i> Ver</label>
+        <input type="text" id="input-ver-device" style="width: 80px"/>
       </div>
     </div>
 
@@ -1150,7 +1194,7 @@
     <div id="object-list-container"></div>
 
     <div class="form-row">
-      <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px;" style="margin-bottom: 10px">
+      <button type="button" id="add-object-btn" class="red-ui-button" style="margin-top: 10px; margin-bottom: 10px">
         <i class="fa fa-plus"></i> Add Object
       </button>
     </div>
@@ -1269,6 +1313,24 @@
             <option value="1">1</option>
         </select>
         <i class="fa fa-question-circle tooltip-icon" data-tooltip="defaultValue"></i>
+      </div>
+
+      <div id="actility-configuration-object">
+        <div class="form-row">
+          <h4>Actility Configuration</h4>
+        </div>
+        <div class="form-row">
+          <label for="input-pId-device" style="width: 60px"><i class="fa fa-tag"></i> pId</label>
+          <input type="text" id="input-pId-device" style="width: 80px"/>
+        </div>
+        <div class="form-row">
+          <label for="input-mId-device" style="width: 60px"><i class="fa fa-tag"></i> mId</label>
+          <input type="text" id="input-mId-device" style="width: 80px"/>
+        </div>
+        <div class="form-row">
+          <label for="input-ver-device" style="width: 60px"><i class="fa fa-hashtag"></i> Ver</label>
+          <input type="text" id="input-ver-device" style="width: 80px"/>
+        </div>
       </div>
 
     </div>
