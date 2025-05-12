@@ -527,10 +527,14 @@
               uplinkObjectContainer.show();
               valueRangeContainer.show();
               break;
-            // case "onChangeOfThisValue":
-            //   break;
-            // case "onChangeOfThisValueWithinRange":
-            //   break;
+            case "onChangeOfThisValue":
+              uplinkObjectContainer.show();
+              valueRangeContainer.hide();
+              break;
+            case "onChangeOfThisValueWithinRange":
+              uplinkObjectContainer.show();
+              valueRangeContainer.show();
+              break;
             default:
               uplinkObjectContainer.hide();
               valueRangeContainer.hide();
