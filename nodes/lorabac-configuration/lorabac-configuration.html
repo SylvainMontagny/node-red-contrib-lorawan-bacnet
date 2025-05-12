@@ -4,6 +4,7 @@
     color: "#00aff0",
     icon: "node-red/cog.svg",
     defaults: {
+      name: { value: "LoRaBAC Configuration" },
       // Saved/Default Configuration
       globalConfig: {
         value: {
@@ -24,7 +25,7 @@
     inputs: 1,
     outputs: 1,
     label: function () {
-      return "LoRaBAC Configuration";
+      return this.name || "LoRaBAC Configuration";
     },
     oneditprepare: function () {
       var node = this;
@@ -988,6 +989,16 @@
 
 <script type="text/html" data-template-name="LoRaBAC configuration">
   <div id="device-config" class="form-horizontal" style="height: 660px; margin: 10px 20px;">
+
+    <div class="form-row">
+      <h3><i class="fa fa-cog"></i> Node Configuration</h3>
+    </div>
+
+    <div class="form-row">
+      <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="LoRaBAC Configuration">
+    </div>
+
     <div class="form-row">
       <h3><i class="fa fa-cog"></i> Global Configuration</h3>
     </div>
