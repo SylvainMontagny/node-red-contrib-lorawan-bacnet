@@ -102,6 +102,8 @@
       });
 
       importFromJsonBtn.on("click", function () {
+        saveGlobalConfig(node);
+        formatArrayToJSON(node);
         showImportJsonTray(node);
       });
 
@@ -119,10 +121,14 @@
       formatArrayToJSON(this);
       console.log(this.globalConfig);
       console.log(this.deviceList);
-
-      this.changed = true;
-      RED.nodes.dirty(this.id);
-      RED.notify("Device list saved", "success");
+      let status = verifyDeviceList(this.deviceList);
+      if (!status.ok) {
+        logErrorStatus(status)
+      } else {
+        this.changed = true;
+        RED.nodes.dirty(this.id);
+        RED.notify("Device list saved", "success");
+      }
     },
   });
 
@@ -695,6 +701,7 @@
   function formatArrayToJSON(node) {
     saveGlobalConfig(node);
     node.deviceList = {};
+    console.log(node.globalConfig);
     node.arrayDeviceList.forEach(arrayDevice => {
       let device = formatDevice(node, arrayDevice);
       node.deviceList[arrayDevice.deviceName] = device;
@@ -756,10 +763,10 @@
       !arrayDevice.debugTxTime) {
       device.controller.debug = null
     } else {
-      if(arrayDevice.debugUp) device.controller.debug.push("up")
-      if(arrayDevice.debugDown) device.controller.debug.push("down")
-      if(arrayDevice.debugCreation) device.controller.debug.push("creation")
-      if(arrayDevice.debugTxTime) device.controller.debug.push("txTime")
+      if (arrayDevice.debugUp) device.controller.debug.push("up")
+      if (arrayDevice.debugDown) device.controller.debug.push("down")
+      if (arrayDevice.debugCreation) device.controller.debug.push("creation")
+      if (arrayDevice.debugTxTime) device.controller.debug.push("txTime")
     }
 
     // Remove logins and passwords if protocol is not restAPIBacnet
@@ -861,7 +868,6 @@
     let jsonEditor = null;
     let inputOverride;
     let editorType;
-
     RED.tray.show({
       title: "Import JSON Device List",
       width: 400,
@@ -871,8 +877,6 @@
 
         inputOverride = $("#checkbox-override-device-list");
         inputOverride.prop('checked', true);
-
-        formatArrayToJSON(node);
 
         const editorContainer = $("#json-device-list-editor")[0];
         editorType = RED.settings.codeEditor.lib || 'monaco';
@@ -918,11 +922,16 @@
 
             let parsedDeviceList = JSON.parse(editorContent);
             let newDevices = unformatDeviceList(node, parsedDeviceList);
-
-            if (inputOverride.prop("checked")) {
-              node.arrayDeviceList = newDevices;
+            let status = verifyDeviceList(parsedDeviceList);
+            if (status.ok) {
+              let newDevices = unformatDeviceList(node, parsedDeviceList);
+              if (inputOverride.prop("checked")) {
+                node.arrayDeviceList = newDevices;
+              } else {
+                node.arrayDeviceList = node.arrayDeviceList.concat(newDevices);
+              }
             } else {
-              node.arrayDeviceList = node.arrayDeviceList.concat(newDevices);
+              logErrorStatus(status)
             }
 
             if (editorType === 'monaco') {
@@ -987,6 +996,270 @@
       tooltip.on("mouseout", removeTooltip);
     });
   }
+  // ==================================================
+  // ========== DEVICE LIST VERIFICATIONS =============
+  // ==================================================
+
+  function logErrorStatus(status) {
+    let message = status.message;
+    delete status.ok
+    delete status.message
+    RED.notify(`Error on device list : ${message} ${JSON.stringify(status, null, 2)}`, "error")
+  }
+
+  function verifyDeviceList(deviceList) {
+    const networkServerSupported = ["tts", "chirpstack", "actility"];
+    const protocolSupported = ["restAPIBacnet", "bacnet"];
+
+    let objectInstanceArrayAV = [], objectInstanceArrayBV = [];
+    let objectInstanceArrayAVManual = [], objectInstanceArrayBVManual = [];
+
+    for (let device in deviceList) {
+      const dev = deviceList[device];
+
+      if (!networkServerSupported.includes(dev.lorawan.networkServer)) {
+        return {
+          ok: false,
+          errorType: "deviceListLoRaWANConfiguration",
+          message: "Network Server not supported",
+          device,
+          property: "networkServer",
+          value: dev.lorawan.networkServer
+        };
+      }
+
+      for (let object in dev.bacnet.objects) {
+        const obj = dev.bacnet.objects[object];
+
+        const requiredProps = ["lorawanPayloadName", "objectType", "assignementMode", "instanceNum", "dataDirection", "value"];
+        for (const prop of requiredProps) {
+          if (!obj.hasOwnProperty(prop)) {
+            return {
+              ok: false,
+              errorType: "deviceListBACnetObjectConfigurationMissingProperty",
+              message: `Missing object property: ${prop}`,
+              device,
+              object,
+              property: prop
+            };
+          }
+        }
+
+        if (obj.dataDirection === "downlink") {
+          const downlinkProps = ["downlinkPort", "downlinkPortPriority", "downlinkStrategy"];
+          for (const prop of downlinkProps) {
+            if (!obj.hasOwnProperty(prop)) {
+              return {
+                ok: false,
+                errorType: "deviceListBACnetObjectConfigurationMissingProperty",
+                message: `Missing downlink property: ${prop}`,
+                device,
+                object,
+                property: prop
+              };
+            }
+          }
+
+          if (obj.downlinkStrategy === "compareToUplinkValue" && !obj.hasOwnProperty("uplinkToCompareWith")) {
+            return {
+              ok: false,
+              errorType: "deviceListBACnetObjectConfigurationMissingProperty",
+              message: "Missing uplinkToCompareWith for compareToUplinkValue strategy",
+              device,
+              object,
+              property: "uplinkToCompareWith"
+            };
+          }
+
+          if (obj.downlinkStrategy === "onChangeOfValueWithinRange") {
+            if (!obj.hasOwnProperty("range")) {
+              return {
+                ok: false,
+                errorType: "deviceListBACnetObjectConfigurationMissingProperty",
+                message: "Missing range for onChangeOfValueWithinRange strategy",
+                device,
+                object,
+                property: "range"
+              };
+            }
+            if (obj.range.length !== 2 || obj.range[1] < obj.range[0]) {
+              return {
+                ok: false,
+                errorType: "deviceListBACnetObjectConfiguration",
+                message: "Invalid range configuration",
+                device,
+                object,
+                property: "range",
+                value: obj.range
+              };
+            }
+          }
+        }
+      }
+
+      if (!protocolSupported.includes(dev.controller.protocol)) {
+        return {
+          ok: false,
+          errorType: "deviceListControllerConfiguration",
+          message: "Controller protocol not supported",
+          device,
+          property: "protocol",
+          value: dev.controller.protocol
+        };
+      }
+
+      let instanceRangeAV = 0, instanceRangeBV = 0;
+      let assignementMode = null;
+
+      for (let object in dev.bacnet.objects) {
+        const obj = dev.bacnet.objects[object];
+
+        if (assignementMode === null) {
+          assignementMode = obj.assignementMode;
+        } else if (assignementMode !== obj.assignementMode) {
+          return {
+            ok: false,
+            errorType: "deviceListBACnetObjectConfiguration",
+            message: "Objects have different assignement modes",
+            device,
+            object,
+            property: "assignementMode",
+            value: obj.assignementMode
+          };
+        }
+
+        if (obj.instanceNum < 0) {
+          return {
+            ok: false,
+            errorType: "deviceListBACnetObjectConfiguration",
+            message: "Negative instanceNum",
+            device,
+            object,
+            property: "instanceNum",
+            value: obj.instanceNum
+          };
+        }
+
+        if (obj.objectType === "analogValue") {
+          if (obj.assignementMode !== "manual" && obj.instanceNum >= dev.bacnet.instanceRangeAV) {
+            return {
+              ok: false,
+              errorType: "deviceListBACnetObjectConfiguration",
+              message: "Analog instanceNum too high",
+              device,
+              object,
+              property: "instanceNum",
+              value: obj.instanceNum
+            };
+          } else if (obj.assignementMode === "manual") {
+            objectInstanceArrayAVManual.push(obj.instanceNum);
+          } else {
+            instanceRangeAV++;
+          }
+        }
+
+        if (obj.objectType === "binaryValue") {
+          if (obj.assignementMode !== "manual" && obj.instanceNum >= dev.bacnet.instanceRangeBV) {
+            return {
+              ok: false,
+              errorType: "deviceListBACnetObjectConfiguration",
+              message: "Binary instanceNum too high",
+              device,
+              object,
+              property: "instanceNum",
+              value: obj.instanceNum
+            };
+          } else if (obj.assignementMode === "manual") {
+            objectInstanceArrayBVManual.push(obj.instanceNum);
+          } else {
+            instanceRangeBV++;
+          }
+        }
+      }
+
+      if (dev.bacnet.instanceRangeAV < instanceRangeAV) {
+        return {
+          ok: false,
+          errorType: "deviceListBACnetConfiguration",
+          message: "InstanceRangeAV too small",
+          device,
+          property: "instanceRangeAV",
+          value: dev.bacnet.instanceRangeAV
+        };
+      }
+      if (dev.bacnet.instanceRangeBV < instanceRangeBV) {
+        return {
+          ok: false,
+          errorType: "deviceListBACnetConfiguration",
+          message: "InstanceRangeBV too small",
+          device,
+          property: "instanceRangeBV",
+          value: dev.bacnet.instanceRangeBV
+        };
+      }
+
+      objectInstanceArrayAV.push({ device, offset: dev.bacnet.offsetAV, instanceRange: dev.bacnet.instanceRangeAV, maxdevNum: dev.identity.maxDevNum });
+      objectInstanceArrayBV.push({ device, offset: dev.bacnet.offsetBV, instanceRange: dev.bacnet.instanceRangeBV, maxdevNum: dev.identity.maxDevNum });
+    }
+
+    objectInstanceArrayAV.sort((a, b) => a.offset - b.offset);
+    objectInstanceArrayBV.sort((a, b) => a.offset - b.offset);
+
+    for (let i = 0; i < objectInstanceArrayAV.length - 1; i++) {
+      const current = objectInstanceArrayAV[i];
+      const next = objectInstanceArrayAV[i + 1];
+      if (current.offset + current.instanceRange * current.maxdevNum > next.offset) {
+        return {
+          ok: false,
+          errorType: "deviceListOverlap",
+          message: "Analog BACnet objects overlap",
+          device1: current.device,
+          device2: next.device
+        };
+      }
+
+      for (let inst of objectInstanceArrayAVManual) {
+        if (inst >= current.offset && inst < current.offset + current.instanceRange * current.maxdevNum) {
+          return {
+            ok: false,
+            errorType: "deviceListOverlapManual",
+            message: "Manual analog object instance overlaps another device's range",
+            device: current.device,
+            instanceNum: inst
+          };
+        }
+      }
+    }
+
+    for (let i = 0; i < objectInstanceArrayBV.length - 1; i++) {
+      const current = objectInstanceArrayBV[i];
+      const next = objectInstanceArrayBV[i + 1];
+      if (current.offset + current.instanceRange * current.maxdevNum > next.offset) {
+        return {
+          ok: false,
+          errorType: "deviceListOverlap",
+          message: "Binary BACnet objects overlap",
+          device1: current.device,
+          device2: next.device
+        };
+      }
+
+      for (let inst of objectInstanceArrayBVManual) {
+        if (inst >= current.offset && inst < current.offset + current.instanceRange * current.maxdevNum) {
+          return {
+            ok: false,
+            errorType: "deviceListOverlapManual",
+            message: "Manual binary object instance overlaps another device's range",
+            device: current.device,
+            instanceNum: inst
+          };
+        }
+      }
+    }
+
+    return { ok: true };
+  }
+
 </script>
 
 <style>
