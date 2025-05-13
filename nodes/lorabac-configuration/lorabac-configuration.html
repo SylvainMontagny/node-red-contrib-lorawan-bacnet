@@ -533,10 +533,10 @@
         }
 
         function toggleValueField() {
-          if(node.globalConfig.protocol === "restAPIBacnet"){
+          if(node.globalConfig.protocol === "bacnet"){
             analogContainer.hide();
             binaryContainer.hide();
-          }else if (selectObjectType.val() === "analogValue") {
+          } else if (selectObjectType.val() === "analogValue") {
             analogContainer.show();
             binaryContainer.hide();
           } else if (selectObjectType.val() === "binaryValue") {
