@@ -152,7 +152,11 @@
     let device = {
       deviceName: baseDeviceName || `device-${node.deviceCount}`,
       maxDevNum: baseDevice.identity?.maxDevNum ?? 10,
-      debug: baseDevice.controller?.debug?.[0] ?? "all",
+      debugAll: baseDevice.controller?.debug?.includes("all") ?? true,
+      debugUp: baseDevice.controller?.debug?.includes("up") ?? false,
+      debugDown: baseDevice.controller?.debug?.includes("down") ?? false,
+      debugCreation: baseDevice.controller?.debug?.includes("creation") ?? false,
+      debugTxTime: baseDevice.controller?.debug?.includes("creation") ?? false,
       flushDownlinkQueue: baseDevice.lorawan?.flushDownlinkQueue ?? false,
       class: baseDevice.lorawan?.class ?? "A",
       pId: baseDevice.actility?.pId ?? "",
@@ -178,7 +182,7 @@
   * Return if the device has at least one downlink object
   */
   function hasDownlinkObject(device) {
-    return device.objects.some(function(object) {
+    return device.objects.some(function (object) {
       return object.dataDirection === "downlink";
     });
   }
@@ -242,7 +246,11 @@
     // Input variables
     let selectClass,
       inputMaxDevNum,
-      selectDebug,
+      checkboxDebugAll,
+      checkboxDebugUp,
+      checkboxDebugDown,
+      checkboxDebugCreation,
+      checkboxDebugTxTime,
       selectFlushDownlinkQueue,
       inputOffsetAV,
       inputOffsetBV,
@@ -265,7 +273,11 @@
         // Init input variables
         selectClass = $("#select-class");
         inputMaxDevNum = $("#input-max-dev-num");
-        selectDebug = $("#select-debug");
+        checkboxDebugAll = $("#debug-all");
+        checkboxDebugUp = $("#debug-up");
+        checkboxDebugDown = $("#debug-down");
+        checkboxDebugCreation = $("#debug-creation");
+        checkboxDebugTxTime = $("#debug-txTime");
         selectFlushDownlinkQueue = $("#select-flush-downlink-queue");
         inputOffsetAV = $("#input-offset-av");
         inputOffsetBV = $("#input-offset-bv");
@@ -276,9 +288,14 @@
         inputVer = $("#input-ver-device");
 
         // Fill inputs
+        checkboxDebugAll.prop("checked", device.debugAll);
+        checkboxDebugUp.prop("checked", device.debugUp);
+        checkboxDebugDown.prop("checked", device.debugDown);
+        checkboxDebugCreation.prop("checked", device.debugCreation);
+        checkboxDebugTxTime.prop("checked", device.debugTxTime);
+
         selectClass.val(device.class);
         inputMaxDevNum.val(device.maxDevNum);
-        selectDebug.val(device.debug);
         selectFlushDownlinkQueue.val(String(device.flushDownlinkQueue)); // To string conversion since it's a select
         inputOffsetAV.val(device.offsetAV);
         inputOffsetBV.val(device.offsetBV);
@@ -288,21 +305,38 @@
         inputMId.val(device.mId);
         inputVer.val(device.ver);
 
+        // Toggle functions
+        function toggleDebugCheckboxes() {
+          if (checkboxDebugAll.prop("checked")) {
+            checkboxDebugUp.prop("disabled", true);
+            checkboxDebugDown.prop("disabled", true);
+            checkboxDebugCreation.prop("disabled", true);
+            checkboxDebugTxTime.prop("disabled", true);
+          } else {
+            checkboxDebugUp.prop("disabled", false);
+            checkboxDebugDown.prop("disabled", false);
+            checkboxDebugCreation.prop("disabled", false);
+            checkboxDebugTxTime.prop("disabled", false);
+          }
+        }
+        toggleDebugCheckboxes();
+        checkboxDebugAll.change(toggleDebugCheckboxes)
+
         // Save dynamically actility settings
-        inputPId.on("blur", function() {
-            device.pId = inputPId.val();
+        inputPId.blur(function () {
+          device.pId = inputPId.val();
         });
 
-        inputMId.on("blur", function() {
-            device.mId = inputMId.val();
+        inputMId.blur(function () {
+          device.mId = inputMId.val();
         });
 
-        inputVer.on("blur", function() {
-            device.ver = inputVer.val();
+        inputVer.blur(function () {
+          device.ver = inputVer.val();
         });
 
         let addObjectBtn = $("#add-object-btn");
-        addObjectBtn.on("click", function () {
+        addObjectBtn.click(function () {
           addNewObject(device);
           updateObjectList(node, device);
         });
@@ -320,9 +354,13 @@
           text: "Save",
           class: "primary",
           click: function () {
+            device.debugAll = checkboxDebugAll.prop("checked");
+            device.debugUp = checkboxDebugUp.prop("checked");
+            device.debugDown = checkboxDebugDown.prop("checked");
+            device.debugCreation = checkboxDebugCreation.prop("checked");
+            device.debugTxTime = checkboxDebugTxTime.prop("checked");
             device.class = selectClass.val();
             device.maxDevNum = Number(inputMaxDevNum.val());
-            device.debug = selectDebug.val();
             device.flushDownlinkQueue = selectFlushDownlinkQueue.val() === "true"; // Convert to boolean based on string
             device.offsetAV = Number(inputOffsetAV.val());
             device.offsetBV = Number(inputOffsetBV.val());
@@ -388,7 +426,7 @@
 
     // Toggle actility container
     const actilityConfigurationContainer = $('#actility-configuration-device')
-    if(node.globalConfig.networkServer === "actility" && hasDownlinkObject(device)){
+    if (node.globalConfig.networkServer === "actility" && hasDownlinkObject(device)) {
       actilityConfigurationContainer.show();
       $("#input-pId-device").val(device.pId);
       $("#input-mId-device").val(device.mId);
@@ -399,17 +437,17 @@
 
     device.objects.forEach(function (object, index) {
       const row = $("<div>")
-      .addClass("form-row")
-      .appendTo(objectListContainer);
+        .addClass("form-row")
+        .appendTo(objectListContainer);
 
       // Object name input
       const objectNameInput = $("<input>")
-      .attr({
-        type: "text",
-        value: object.objectName,
-        class: "node-input-list-item",
-      })
-      .appendTo(row);
+        .attr({
+          type: "text",
+          value: object.objectName,
+          class: "node-input-list-item",
+        })
+        .appendTo(row);
 
       // Update device name input when leaving input
       objectNameInput.on("input", function () {
@@ -418,24 +456,24 @@
 
       // Edit button
       $("<button>")
-      .html(`<i class="fa fa-pencil"></i>`)
-      .css("margin-left", "10px")
-      .addClass("red-ui-button")
-      .click(function () {
-        showObjectTray(node, device, object);
-      })
-      .appendTo(row);
+        .html(`<i class="fa fa-pencil"></i>`)
+        .css("margin-left", "10px")
+        .addClass("red-ui-button")
+        .click(function () {
+          showObjectTray(node, device, object);
+        })
+        .appendTo(row);
 
       // Delete button
       $("<button>")
-      .css("margin-left", "10px")
-      .html(`<i class="fa fa-trash"></i>`)
-      .addClass("red-ui-button")
-      .click(function () {
-        device.objects.splice(index, 1);
-        updateObjectList(node, device);
-      })
-      .appendTo(row);
+        .css("margin-left", "10px")
+        .html(`<i class="fa fa-trash"></i>`)
+        .addClass("red-ui-button")
+        .click(function () {
+          device.objects.splice(index, 1);
+          updateObjectList(node, device);
+        })
+        .appendTo(row);
     });
   }
 
@@ -533,7 +571,7 @@
         }
 
         function toggleValueField() {
-          if(node.globalConfig.protocol === "bacnet"){
+          if (node.globalConfig.protocol === "bacnet") {
             analogContainer.hide();
             binaryContainer.hide();
           } else if (selectObjectType.val() === "analogValue") {
@@ -548,7 +586,7 @@
         function toggleDownlinkConfiguration() {
           if (selectDataDirection.val() === "downlink") {
             downlinkConfigurationContainer.show();
-            if(node.globalConfig.networkServer === "actility"){
+            if (node.globalConfig.networkServer === "actility") {
               actilityConfigurationContainer.show();
             } else {
               actilityConfigurationContainer.hide();
@@ -672,7 +710,7 @@
         maxDevNum: arrayDevice.maxDevNum
       },
       controller: {
-        debug: [arrayDevice.debug],
+        debug: [],
         model: node.globalConfig.model,
         protocol: node.globalConfig.protocol,
         ipAddress: node.globalConfig.ipAddress,
@@ -708,9 +746,20 @@
     };
 
     // Conditions
-    // Debug none
-    if (device.controller.debug[0] === "none") {
-      device.controller.debug[0] = null;
+
+    // Debug
+    if (arrayDevice.debugAll) {
+      device.controller.debug = ["all"];
+    } else if (!arrayDevice.debugUp &&
+      !arrayDevice.debugDown &&
+      !arrayDevice.debugCreation &&
+      !arrayDevice.debugTxTime) {
+      device.controller.debug = null
+    } else {
+      if(arrayDevice.debugUp) device.controller.debug.push("up")
+      if(arrayDevice.debugDown) device.controller.debug.push("down")
+      if(arrayDevice.debugCreation) device.controller.debug.push("creation")
+      if(arrayDevice.debugTxTime) device.controller.debug.push("txTime")
     }
 
     // Remove logins and passwords if protocol is not restAPIBacnet
@@ -981,6 +1030,10 @@
   .form-row {
     position: relative;
   }
+
+  .checkbox-row {
+    margin-bottom: 5px;
+  }
 </style>
 
 <!-- ============================================================
@@ -1112,18 +1165,27 @@
     </div>
 
     <div class="form-row">
-      <label for="select-debug" style="width: 120px">
-        <i class="fa fa-bug"></i> Debug
-      </label>
-      <select id="select-debug">
-          <option value="none">None</option>
-          <option value="all">All events</option>
-          <option value="up">Only uplink events</option>
-          <option value="down">Only downlink events</option>
-          <option value="creation">Only creation events</option>
-          <option value="txTime">Only print TX time</option>
-      </select>
-      <i class="fa fa-question-circle tooltip-icon" data-tooltip="debug"></i>
+      <i class="fa fa-bug"></i> Debug <i class="fa fa-question-circle tooltip-icon" data-tooltip="debug"></i>
+    </div>
+    <div class="form-row checkbox-row">
+      <input type="checkbox" id="debug-all" style="margin: 0px; width: auto;" />
+      <label for="debug-all" style="width:auto"> All events</label>
+    </div>
+    <div class="form-row checkbox-row">
+      <input type="checkbox" id="debug-up" style="margin: 0px; width: auto;" />
+      <label for="debug-up" style="width:auto"> Uplink events</label>
+    </div>
+    <div class="form-row checkbox-row">
+      <input type="checkbox" id="debug-down" style="margin: 0px; width: auto;" />
+      <label for="debug-down" style="width:auto"> Downlink events</label>
+    </div>
+    <div class="form-row checkbox-row">
+      <input type="checkbox" id="debug-creation" style="margin: 0px; width: auto;" />
+      <label for="debug-creation" style="width:auto"> Creation events</label>
+    </div>
+    <div class="form-row checkbox-row">
+      <input type="checkbox" id="debug-txTime" style="margin: 0px; width: auto;" />
+      <label for="debug-txTime" style="width:auto"> Print TX time</label>
     </div>
 
     <div class="form-row">
