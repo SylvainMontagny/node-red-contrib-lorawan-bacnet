@@ -16,7 +16,11 @@
       "email": "elias.cuzeau@ikmail.com"
     }
   ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "node-red": {
+    "version": ">=3.0.0",
     "nodes": {
       "lorabac": "nodes/lorabac/lorabac.js"
     }
