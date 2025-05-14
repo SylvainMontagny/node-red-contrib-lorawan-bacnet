@@ -145,6 +145,26 @@
     node.globalConfig.model = $("#select-bacnet-api-model").val();
   }
 
+  function enforceNumberInRange($input, options) {
+      const {
+          min = 0,
+          max = Infinity,
+          name = "Value",
+          allowFloat = false
+      } = options;
+
+      $input.blur(function () {
+          let val = allowFloat ? parseFloat($input.val()) : parseInt($input.val(), 10);
+
+          if (isNaN(val) || val < min || val > max) {
+              RED.notify(`${name} must be a ${allowFloat ? 'number' : 'whole number'} between ${min} and ${max}`, "error");
+              val = Math.max(min, Math.min(val || 0, max)); // Clamping
+          }
+
+          $input.val(allowFloat ? Number(val) : parseInt(val, 10));
+      });
+  }
+
   // ==================================================
   // =============== DEVICE FUNCTIONS =================
   // ==================================================
@@ -326,6 +346,45 @@
           }
         }
         checkboxDebugAll.change(toggleDebugCheckboxes)
+
+        enforceNumberInRange(inputMaxDevNum, {
+            min: 1,
+            max: Infinity,
+            name: "maxDevNum",
+            allowFloat: false
+        });
+
+        enforceNumberInRange(inputOffsetAV, {
+            min: 0,
+            max: Infinity,
+            name: "offsetAV",
+            allowFloat: true,
+            decimals: 5
+        });
+
+        enforceNumberInRange(inputOffsetBV, {
+            min: 0,
+            max: Infinity,
+            name: "offsetBV",
+            allowFloat: true,
+            decimals: 5
+        });
+
+        enforceNumberInRange(inputInstanceRangeAV, {
+            min: 0,
+            max: Infinity,
+            name: "instanceRangeAV",
+            allowFloat: true,
+            decimals: 5
+        });
+
+        enforceNumberInRange(inputInstanceRangeBV, {
+            min: 0,
+            max: Infinity,
+            name: "instanceRangeBV",
+            allowFloat: true,
+            decimals: 5
+        });
 
         // Save dynamically actility settings
         inputPId.blur(function () {
@@ -686,7 +745,7 @@
   /**
    * Show the actility container in the object tray
    */
-  function toggleActilityContainer(node, device){
+  function toggleActilityContainer(node, device) {
     const actilityConfigurationContainer = $('#actility-configuration-device')
     if (node.globalConfig.networkServer === "actility" && hasDownlinkObject(device)) {
       actilityConfigurationContainer.show();
@@ -1011,30 +1070,30 @@
   }
 
   function verifyDeviceList(deviceList) {
-      const okayStatus = { ok: true, message: "Device list OK" };
-      const errorStatus = (msg) => ({ ok: false, message: msg });
+    const okayStatus = { ok: true, message: "Device list OK" };
+    const errorStatus = (msg) => ({ ok: false, message: msg });
 
-      const deviceKeys = Object.keys(deviceList);
+    const deviceKeys = Object.keys(deviceList);
 
-      // Empty device list
-      if (deviceKeys.length === 0) return okayStatus;
+    // Empty device list
+    if (deviceKeys.length === 0) return okayStatus;
 
-      // Verify global configuration
-      let firstDevice = deviceList[deviceKeys[0]];
-      if (firstDevice.controller.ipAddress === "") return errorStatus("Invalid IP Address");
+    // Verify global configuration
+    let firstDevice = deviceList[deviceKeys[0]];
+    if (firstDevice.controller.ipAddress === "") return errorStatus("Invalid IP Address");
 
-      // Verify all devices/objects
-      for (const deviceKey of deviceKeys) {
-          const device = deviceList[deviceKey];
+    // Verify all devices/objects
+    for (const deviceKey of deviceKeys) {
+      const device = deviceList[deviceKey];
 
-          const objectKeys = Object.keys(device.bacnet?.objects || {});
-          for (const objectKey of objectKeys) {
-              const object = device.bacnet.objects[objectKey];
+      const objectKeys = Object.keys(device.bacnet?.objects || {});
+      for (const objectKey of objectKeys) {
+        const object = device.bacnet.objects[objectKey];
 
-          }
       }
+    }
 
-      return okayStatus;
+    return okayStatus;
   }
 
 </script>
@@ -1287,22 +1346,22 @@
 
     <div class="form-row">
       <label for="input-offset-av" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset AV</label>
-      <input type="number" id="input-offset-av" style="width: 80px"/>
+      <input type="number" step="any" id="input-offset-av" style="width: 80px"/>
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="offsetAV"></i>
     </div>
     <div class="form-row">
       <label for="input-offset-bv" style="width: 140px"><i class="fa fa-arrows-h"></i> Offset BV</label>
-      <input type="number" id="input-offset-bv" style="width: 80px"/>
+      <input type="number" step="any" id="input-offset-bv" style="width: 80px"/>
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="offsetBV"></i>
     </div>
     <div class="form-row">
       <label for="input-instance-range-av" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range AV</label>
-      <input type="number" id="input-instance-range-av" style="width: 80px"/>
+      <input type="number" step="any" id="input-instance-range-av" style="width: 80px"/>
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeAV"></i>
     </div>
     <div class="form-row">
       <label for="input-instance-range-bv" style="width: 140px"><i class="fa fa-arrows"></i> Instance Range BV</label>
-      <input type="number" id="input-instance-range-bv" style="width: 80px"/>
+      <input type="number" step="any" id="input-instance-range-bv" style="width: 80px"/>
       <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceRangeBV"></i>
     </div>
 
@@ -1338,7 +1397,7 @@
 
     <div class="form-row">
       <label for="select-object-type" style="width: 160px">
-        <i class="fa fa-asterisk"></i> Value type
+        <i class="fa fa-asterisk"></i> Object type
       </label>
       <select id="select-object-type" style="width: 130px">
           <option value="analogValue">Analog value</option>
