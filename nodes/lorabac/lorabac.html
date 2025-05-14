@@ -146,23 +146,23 @@
   }
 
   function enforceNumberInRange($input, options) {
-      const {
-          min = 0,
-          max = Infinity,
-          name = "Value",
-          allowFloat = false
-      } = options;
+    const {
+      min = 0,
+      max = Infinity,
+      name = "Value",
+      allowFloat = false
+    } = options;
 
-      $input.blur(function () {
-          let val = allowFloat ? parseFloat($input.val()) : parseInt($input.val(), 10);
+    $input.blur(function () {
+      let val = allowFloat ? parseFloat($input.val()) : parseInt($input.val(), 10);
 
-          if (isNaN(val) || val < min || val > max) {
-              RED.notify(`${name} must be a ${allowFloat ? 'number' : 'whole number'} between ${min} and ${max}`, "error");
-              val = Math.max(min, Math.min(val || 0, max)); // Clamping
-          }
+      if (isNaN(val) || val < min || val > max) {
+        RED.notify(`${name} must be a ${allowFloat ? 'number' : 'whole number'} between ${min} and ${max}`, "error");
+        val = Math.max(min, Math.min(val || 0, max)); // Clamping
+      }
 
-          $input.val(allowFloat ? Number(val) : parseInt(val, 10));
-      });
+      $input.val(allowFloat ? Number(val) : parseInt(val, 10));
+    });
   }
 
   // ==================================================
@@ -348,42 +348,42 @@
         checkboxDebugAll.change(toggleDebugCheckboxes)
 
         enforceNumberInRange(inputMaxDevNum, {
-            min: 1,
-            max: Infinity,
-            name: "maxDevNum",
-            allowFloat: false
+          min: 1,
+          max: Infinity,
+          name: "maxDevNum",
+          allowFloat: false
         });
 
         enforceNumberInRange(inputOffsetAV, {
-            min: 0,
-            max: Infinity,
-            name: "offsetAV",
-            allowFloat: true,
-            decimals: 5
+          min: 0,
+          max: Infinity,
+          name: "offsetAV",
+          allowFloat: true,
+          decimals: 5
         });
 
         enforceNumberInRange(inputOffsetBV, {
-            min: 0,
-            max: Infinity,
-            name: "offsetBV",
-            allowFloat: true,
-            decimals: 5
+          min: 0,
+          max: Infinity,
+          name: "offsetBV",
+          allowFloat: true,
+          decimals: 5
         });
 
         enforceNumberInRange(inputInstanceRangeAV, {
-            min: 0,
-            max: Infinity,
-            name: "instanceRangeAV",
-            allowFloat: true,
-            decimals: 5
+          min: 0,
+          max: Infinity,
+          name: "instanceRangeAV",
+          allowFloat: true,
+          decimals: 5
         });
 
         enforceNumberInRange(inputInstanceRangeBV, {
-            min: 0,
-            max: Infinity,
-            name: "instanceRangeBV",
-            allowFloat: true,
-            decimals: 5
+          min: 0,
+          max: Infinity,
+          name: "instanceRangeBV",
+          allowFloat: true,
+          decimals: 5
         });
 
         // Save dynamically actility settings
@@ -1017,18 +1017,39 @@
   // ==================================================
 
   const tooltips = {
-    maxDevNum: "The maximum number of device for this Type of for this group.",
+    networkServer: "LoRaWAN Network Server",
+    protocol: "Protocol used by LoRaBAC to access your BMS.",
+
+    // Chirpstack Configuration
+    grpcApiKey: "API key of your chirpstack LNS",
+
+    // Rest API BMS Settings
+    apiModel: "REST API of your BMS",
+    login: "REST API login",
+    password: "REST API password",
+
     debug: "Debug level",
-    flushDownlinkQueue: "Whether you want to flush the downlink queue on your LNS for each downlink.",
-    downlinkPort: "The LoRaWAN downlink FPort for this object.",
-    offsetBV: "From which BACnet instance do you want to store the Binary Value BACnet objects?",
-    offsetAV: "From which BACnet instance do you want to store the Analog Value BACnet objects.",
-    instanceRangeBV: "The maximum number of Binary Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
-    instanceRangeAV: "The maximum number of Analog Value stored in your BMS. If you specific less in the configuration, then empty spaces will be left for later use.",
-    lorawanPayloadName: "Le LoRaWAN payload name as it has been decoding by you LoRaWAN payload decoder or as it should be provided to your LoRaWAN paylaod encoder.",
-    dataDirection: "Is it a LoRaWAN payload to write to the BMS or a LoRaWAN paylaod to read from the BMS?",
-    defaultValue: "Default downlink value if the Object is created by the API REST.",
-    objectType: "Type of BACnet object (Analog Value or Binary Value)."
+    maxDevNum: "Size of your LoRaWAN device fleet (for this type of device).",
+    flushDownlinkQueue: "Do you want to flush the downlink queue on your LNS for each downlink.",
+
+    // Actility Configuration
+
+    // Instance Num Settings
+    offsetAV: "Instance Num from which you want to start the storage of the Analog Value BACnet objects.",
+    offsetBV: "Instance Num from which you want to start the storage of the Binary Value BACnet objects.",
+    instanceRangeAV: "Number of analog value instance your want to allocate per device.",
+    instanceRangeBV: "Number of binary value instance your want to allocate per device.",
+
+    lorawanPayloadName: "The LoRaWAN payload name as it is in your LoRaWAN codec.",
+    assignementMode: " - <strong>Auto</strong> : Instance Num is automaticaly set using the following \"Instance Num Offset\".<br>- <strong>Manual</strong> : Instance Num is mannualy set by using the following \"Instance Num\".",
+    instanceNum: "Set the instance number of the object.",
+    dataDirection: "Is it an object related to uplink or downlink for your device?",
+
+    // Downlink configuration
+    downlinkPort: "The LoRaWAN downlink Fport used for this object.",
+    priority: "Set the downlink priority of this object.",
+    downlinkStrategies: "Select how the application will chek if a downlink is needed.",
+    defaultValue: "Default value when the object is created by the REST API"
   };
 
   function setupTooltips() {
@@ -1175,6 +1196,7 @@
           <option value="chirpstack">Chirpstack</option>
           <option value="actility">Actility</option>
       </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="networkServer"></i>
     </div>
 
     <div class="form-row">
@@ -1191,6 +1213,7 @@
             <option value="modbus">Modbus</option>
           -->
       </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="protocol"></i>
     </div>
 
     <div id="chirpstack-config">
@@ -1201,6 +1224,7 @@
         <label for="input-grpc-api-key" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
         <input type="text" id="input-grpc-api-key"/>
       </div>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="grpcApiKey"></i>
     </div>
 
     <div id="bacnet-settings">
@@ -1214,14 +1238,17 @@
         <select id="select-bacnet-api-model">
             <option value="distechControlsV2">Distech Control v2</option>
         </select>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="apiModel"></i>
       </div>
       <div class="form-row">
         <label for="input-bacnet-login" style="width: 120px"><i class="fa fa-user"></i> Login</label>
         <input type="text" id="input-bacnet-login" style="width: 270px"/>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="login"></i>
       </div>
       <div class="form-row">
         <label for="input-bacnet-password" style="width: 120px"><i class="fa fa-lock"></i> Password</label>
         <input type="text" id="input-bacnet-password" style="width: 270px"/>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="password"></i>
       </div>
     </div>
   </form>
@@ -1414,11 +1441,13 @@
           <option value="auto">Auto</option>
           <option value="manual">Manual</option>
       </select>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="assignementMode"></i>
     </div>
 
     <div class="form-row">
       <label for="input-instance-num" style="width: 160px"><i class="fa fa-hashtag"></i> <span id="span-instance-num">Instance num</span></label>
       <input type="number" id="input-instance-num" style="width: 130px"/>
+      <i class="fa fa-question-circle tooltip-icon" data-tooltip="instanceNum"></i>
     </div>
 
     <div class="form-row">
@@ -1450,6 +1479,7 @@
             <option value="low">Low</option>
             <option value="high">High</option>
         </select>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="priority"></i>
       </div>
 
       <div class="form-row">
@@ -1462,6 +1492,7 @@
             <option value="onChangeOfThisValue">On change of this value on the BMS</option>
             <option value="onChangeOfThisValueWithinRange">On change of this value within range on the BMS</option>
         </select>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="downlinkStrategies"></i>
       </div>
 
       <div class="form-row" id="uplink-object-container">
