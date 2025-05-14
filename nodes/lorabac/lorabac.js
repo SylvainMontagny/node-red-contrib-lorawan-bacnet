@@ -4,23 +4,21 @@ module.exports = function (RED) {
         var node = this;
         const flow = node.context().flow;
 
-        setupGlobalVariables(this, config);
+        node.warn(config.deviceList); // Display in debug
+        
         let status = verifyDeviceList(config.deviceList);
         displayStatus(node, status);
         if (status.ok) {
-            flow.set('g_deviceList', config.deviceList);
-        }
-
-        if (config.globalConfig.protocol === "restAPIBacnet") {
-            generateHttpAuthentication(config.deviceList);
+            if (config.globalConfig.protocol === "restAPIBacnet") {
+                generateHttpAuthentication(config.deviceList);
+            }
+            setupGlobalVariables(this, config);
         }
 
         node.on("input", function (msg) {
-            let deviceList = config.deviceList || {};
             let device = createObject(this, msg);
             const result = {
                 "device": device,
-                "deviceList": deviceList
             }
             node.send(result);
         });
@@ -57,6 +55,8 @@ module.exports = function (RED) {
 
     function setupGlobalVariables(node, config) {
         const flow = node.context().flow;
+
+        flow.set('g_deviceList', config.deviceList);
 
         flow.set('g_httpRequestTimeOut', 5000);
         flow.set('g_tts_topicDownlinkSuffix', "/down");
