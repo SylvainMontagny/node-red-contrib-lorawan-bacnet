@@ -1,6 +1,6 @@
 {
   "name": "@montagny/node-red-contrib-lorawan-bacnet",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Provides custom Node-RED nodes for integrating LoRaWAN devices with BACnet systems",
   "keywords": [
     "LoRaWAN",
