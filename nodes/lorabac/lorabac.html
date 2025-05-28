@@ -826,7 +826,7 @@
       !arrayDevice.debugDown &&
       !arrayDevice.debugCreation &&
       !arrayDevice.debugTxTime) {
-      device.controller.debug = null
+      device.controller.debug = []
     } else {
       if (arrayDevice.debugUp) device.controller.debug.push("up")
       if (arrayDevice.debugDown) device.controller.debug.push("down")

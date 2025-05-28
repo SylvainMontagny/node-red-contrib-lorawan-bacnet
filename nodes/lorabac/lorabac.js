@@ -73,7 +73,7 @@ module.exports = function (RED) {
             if (debugType == "forceOn") {
                 node.warn(debugText);
             }
-            else if (device.controller.debug.some(element => element == "all" || element == debugType)) {
+            else if (device.controller.debug?.some(element => element === "all" || element === debugType)) {
                 node.warn(debugText);
             }
             else {
@@ -162,7 +162,7 @@ module.exports = function (RED) {
             deviceNum = parseInt(match[2], 10);  // The number at the end, converted to an integer
         }
         else {
-            node.error("Error: Device Name does not respect *xxx - num* format",
+            node.error("Error: Device Name (" + deviceName + ") does not respect *xxx - num* format",
                 {
                     errorType: "deviceName",
                     value: deviceName,
@@ -171,7 +171,7 @@ module.exports = function (RED) {
         }
 
         if ((deviceNum == 0)) {
-            node.error('Error: Device Num is 0 is not allowed',
+            node.error("Error: Device Num is 0 is not allowed (" + deviceName + ")",
                 {
                     errorType: "deviceName",
                     value: deviceName,
@@ -180,7 +180,7 @@ module.exports = function (RED) {
         }
 
         if (deviceList[deviceType] == undefined) {
-            node.error('Error: Device Type does not belong to the Device List',
+            node.error("Error: Device Type does not belong to the Device List (" + deviceName + ")",
                 {
                     errorType: "deviceName",
                     value: deviceName,
@@ -190,7 +190,7 @@ module.exports = function (RED) {
 
         // Check deviceNum overflow
         if (deviceNum > deviceList[deviceType].identity.maxDevNum) {
-            node.error('Error: Device number is too high',
+            node.error("Error: Device number is too high (" + deviceName + ")",
                 {
                     errorType: "deviceName",
                     value: deviceName,
