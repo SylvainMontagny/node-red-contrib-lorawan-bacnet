@@ -11,6 +11,8 @@
           ipAddress: "",
           networkServer: "tts",
           grpcApiKey: "",
+          serverAddress: "",
+          grpcPort: 8080,
           protocol: "bacnet",
           model: "distechControlsV2",
           bacnetLogin: "",
@@ -34,6 +36,8 @@
       var ipAddressInput = $("#input-ip-address");
       var networkServerSelect = $("#select-network-server");
       var chirpstackGrpcApiKey = $("#input-grpc-api-key");
+      var chirpstackServerAddress = $("#input-server-address");
+      var chirpstackGrpcPort = $("#input-grpc-port");
       var protocolSelect = $("#select-protocol");
       var modelSelect = $("#select-bacnet-api-model");
       var bacnetLoginInput = $("#input-bacnet-login");
@@ -52,6 +56,8 @@
       if (node.globalConfig.ipAddress) ipAddressInput.val(node.globalConfig.ipAddress);
       if (node.globalConfig.networkServer) networkServerSelect.val(node.globalConfig.networkServer);
       if (node.globalConfig.grpcApiKey) chirpstackGrpcApiKey.val(node.globalConfig.grpcApiKey);
+      if (node.globalConfig.serverAddress) chirpstackServerAddress.val(node.globalConfig.serverAddress);
+      if (node.globalConfig.grpcPort) chirpstackGrpcPort.val(node.globalConfig.grpcPort);
       if (node.globalConfig.protocol) protocolSelect.val(node.globalConfig.protocol);
       if (node.globalConfig.model) modelSelect.val(node.globalConfig.model);
       if (node.globalConfig.bacnetLogin) bacnetLoginInput.val(node.globalConfig.bacnetLogin);
@@ -139,6 +145,8 @@
     node.globalConfig.ipAddress = $("#input-ip-address").val();
     node.globalConfig.networkServer = $("#select-network-server").val();
     node.globalConfig.grpcApiKey = $("#input-grpc-api-key").val();
+    node.globalConfig.serverAddress = $("#input-server-address").val();
+    node.globalConfig.grpcPort = $("#input-grpc-port").val();
     node.globalConfig.protocol = $("#select-protocol").val();
     node.globalConfig.bacnetLogin = $("#input-bacnet-login").val();
     node.globalConfig.bacnetPassword = $("#input-bacnet-password").val();
@@ -806,7 +814,9 @@
         flushDownlinkQueue: arrayDevice.flushDownlinkQueue,
         class: arrayDevice.class,
         chirpstack: {
-          grpcApiKey: node.globalConfig.grpcApiKey
+          grpcApiKey: node.globalConfig.grpcApiKey,
+          serverAddress: node.globalConfig.serverAddress,
+          grpcPort: node.globalConfig.grpcPort
         },
         actility: {
           driver: {
@@ -837,7 +847,7 @@
       !arrayDevice.debugDown &&
       !arrayDevice.debugCreation &&
       !arrayDevice.debugTxTime) {
-      device.controller.debug = null
+      device.controller.debug = []
     } else {
       if (arrayDevice.debugUp) device.controller.debug.push("up")
       if (arrayDevice.debugDown) device.controller.debug.push("down")
@@ -1033,6 +1043,8 @@
 
     // Chirpstack Configuration
     grpcApiKey: "API key of your chirpstack LNS",
+    serverAddress: "Server address of your chirpstack LNS",
+    grpcPort: "gRPC port of your chirpstack LNS",
 
     // Rest API BMS Settings
     apiModel: "REST API of your BMS",
@@ -1235,6 +1247,16 @@
         <label for="input-grpc-api-key" style="width: 120px"><i class="fa fa-key"></i> GRPC API Key</label>
         <input type="text" id="input-grpc-api-key" style="width: 260px"/>
         <i class="fa fa-question-circle tooltip-icon" data-tooltip="grpcApiKey"></i>
+      </div>
+       <div class="form-row">
+        <label for="input-server-address" style="width: 120px"><i class="fa fa-server"></i> Server Address</label>
+        <input type="text" id="input-server-address" style="width: 260px"/>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="serverAddress"></i>
+      </div>
+       <div class="form-row">
+        <label for="input-grpc-port" style="width: 120px"><i class="fa fa-globe"></i> GRPC Port</label>
+        <input type="number" id="input-grpc-port" style="width: 260px"/>
+        <i class="fa fa-question-circle tooltip-icon" data-tooltip="grpcPort"></i>
       </div>
     </div>
 
