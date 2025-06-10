@@ -358,32 +358,28 @@
           min: 0,
           max: Infinity,
           name: "offsetAV",
-          allowFloat: true,
-          decimals: 5
+          allowFloat: false
         });
 
         enforceNumberInRange(inputOffsetBV, {
           min: 0,
           max: Infinity,
           name: "offsetBV",
-          allowFloat: true,
-          decimals: 5
+          allowFloat: false
         });
 
         enforceNumberInRange(inputInstanceRangeAV, {
           min: 0,
           max: Infinity,
           name: "instanceRangeAV",
-          allowFloat: true,
-          decimals: 5
+          allowFloat: false
         });
 
         enforceNumberInRange(inputInstanceRangeBV, {
           min: 0,
           max: Infinity,
           name: "instanceRangeBV",
-          allowFloat: true,
-          decimals: 5
+          allowFloat: false
         });
 
         // Save dynamically actility settings
@@ -603,6 +599,21 @@
         inputPId.val(device.pId);
         inputMId.val(device.mId);
         inputVer.val(device.ver);
+
+        enforceNumberInRange(inputInstanceNum, {
+          min: 0,
+          max: Infinity,
+          name: "InstanceNum",
+          allowFloat: false
+        });
+        
+        enforceNumberInRange(inputDownlinkPort, {
+          min: 0,
+          max: Infinity,
+          name: "DownlinkPort",
+          allowFloat: false
+        });
+
 
 
         // Containers

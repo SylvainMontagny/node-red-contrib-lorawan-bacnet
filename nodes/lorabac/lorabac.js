@@ -189,8 +189,8 @@ module.exports = function (RED) {
         }
 
         // Check deviceNum overflow
-        if (deviceNum > deviceList[deviceType].identity.maxDevNum) {
-            node.error('Error: Device number is too high',
+        if (deviceNum >= deviceList[deviceType].identity.maxDevNum) {
+            node.error("Error: Device number is too high (" + deviceName + ")",
                 {
                     errorType: "deviceName",
                     value: deviceName,
@@ -281,83 +281,44 @@ module.exports = function (RED) {
     function verifyDeviceList(deviceList) {
         const networkServerSupported = ["tts", "chirpstack", "actility"];
         const protocolSupported = ["restAPIBacnet", "bacnet"];
+        const regexIP = /^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}$/;
 
-        let objectInstanceArrayAV = [], objectInstanceArrayBV = [];
+
+       
         let objectInstanceArrayAVManual = [], objectInstanceArrayBVManual = [];
+        let deviceNameArray = [];
 
+        
+        let objectNameArray = [], objectInstanceArray = [];
+
+//#region /////  IP Check  /////        
         for (let device in deviceList) {
             const dev = deviceList[device];
 
-            if (!networkServerSupported.includes(dev.lorawan.networkServer)) {
+            if (!regexIP.test(device.controller.ipAddress)){
                 return {
                     ok: false,
-                    errorType: "deviceListLoRaWANConfiguration",
-                    message: "Network Server not supported",
-                    device,
-                    property: "networkServer",
-                    value: dev.lorawan.networkServer
+                    message: "Indvalid IP address",
+                    value: device.controller.ipAddress
                 };
             }
+        }
+//#endregion
 
+//#region /////  Range Check  /////
+        for (let device in deviceList) {
+            const dev = deviceList[device];
             for (let object in dev.bacnet.objects) {
                 const obj = dev.bacnet.objects[object];
-
-                const requiredProps = ["lorawanPayloadName", "objectType", "assignementMode", "instanceNum", "dataDirection", "value"];
-                for (const prop of requiredProps) {
-                    if (!obj.hasOwnProperty(prop)) {
-                        return {
-                            ok: false,
-                            errorType: "deviceListBACnetObjectConfigurationMissingProperty",
-                            message: `Missing object property: ${prop}`,
-                            device,
-                            object,
-                            property: prop
-                        };
-                    }
-                }
-
                 if (obj.dataDirection === "downlink") {
-                    const downlinkProps = ["downlinkPort", "downlinkPortPriority", "downlinkStrategy"];
-                    for (const prop of downlinkProps) {
-                        if (!obj.hasOwnProperty(prop)) {
-                            return {
-                                ok: false,
-                                errorType: "deviceListBACnetObjectConfigurationMissingProperty",
-                                message: `Missing downlink property: ${prop}`,
-                                device,
-                                object,
-                                property: prop
-                            };
-                        }
-                    }
 
-                    if (obj.downlinkStrategy === "compareToUplinkValue" && !obj.hasOwnProperty("uplinkToCompareWith")) {
-                        return {
-                            ok: false,
-                            errorType: "deviceListBACnetObjectConfigurationMissingProperty",
-                            message: "Missing uplinkToCompareWith for compareToUplinkValue strategy",
-                            device,
-                            object,
-                            property: "uplinkToCompareWith"
-                        };
-                    }
+                    if (obj.downlinkStrategy === "onChangeOfThisValueWithinRange" || obj.downlinkStrategy === "compareToUplinkObjectWithinRange" ) {
 
-                    if (obj.downlinkStrategy === "onChangeOfValueWithinRange") {
-                        if (!obj.hasOwnProperty("range")) {
-                            return {
-                                ok: false,
-                                errorType: "deviceListBACnetObjectConfigurationMissingProperty",
-                                message: "Missing range for onChangeOfValueWithinRange strategy",
-                                device,
-                                object,
-                                property: "range"
-                            };
-                        }
                         if (obj.range.length !== 2 || obj.range[1] < obj.range[0]) {
                             return {
                                 ok: false,
                                 errorType: "deviceListBACnetObjectConfiguration",
-                                message: "Invalid range configuration",
+                                message: `Invalid range configuration for object ${object} of device ${device}`,
                                 device,
                                 object,
                                 property: "range",
@@ -367,19 +328,50 @@ module.exports = function (RED) {
                     }
                 }
             }
+        }
 
-            if (!protocolSupported.includes(dev.controller.protocol)) {
-                return {
-                    ok: false,
-                    errorType: "deviceListControllerConfiguration",
-                    message: "Controller protocol not supported",
-                    device,
-                    property: "protocol",
-                    value: dev.controller.protocol
-                };
+//#endregion
+
+//#region /////  uplinkObjectToCompareWith Check  /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+            let uplinkToCompareObjectArray = [], uplinkObjectArray = [];
+
+            for (let object in dev.bacnet.objects) {
+                const obj = dev.bacnet.objects[object];
+
+                if (obj.dataDirection === "downlink") {
+
+                    if (obj.downlinkStrategy === "compareToUplinkObject" || obj.downlinkStrategy === "compareToUplinkObjectWithinRange") {
+                        uplinkToCompareObjectArray.push(obj.uplinkToCompareWith)
+                    }
+
+                }else{
+
+                    uplinkObjectArray.push(object);
+                }
             }
 
-            let instanceRangeAV = 0, instanceRangeBV = 0;
+            uplinkToCompareObjectArray.forEach(element => {
+                if (uplinkObjectArray.some(uplink => uplink === element)){
+                    return {
+                        ok: false,
+                        errorType: "deviceListBACnetConfiguration",
+                        message: `${element} is not an uplink object for device ${device}`,
+                        device,
+                        property: "instanceNum",
+                        value: dev.bacnet.instanceRangeBV
+                    };
+                }
+            })
+        }
+//#endregion
+
+//#region /////  AssignementMode Check  /////
+        for (let device in deviceList) {
+            const dev = deviceList[device];
+            
             let assignementMode = null;
 
             for (let object in dev.bacnet.objects) {
@@ -391,32 +383,31 @@ module.exports = function (RED) {
                     return {
                         ok: false,
                         errorType: "deviceListBACnetObjectConfiguration",
-                        message: "Objects have different assignement modes",
+                        message: `Objects have different assignement modes for device ${device}`,
                         device,
                         object,
                         property: "assignementMode",
                         value: obj.assignementMode
                     };
                 }
+            }
+        }
+//#endregion
 
-                if (obj.instanceNum < 0) {
-                    return {
-                        ok: false,
-                        errorType: "deviceListBACnetObjectConfiguration",
-                        message: "Negative instanceNum",
-                        device,
-                        object,
-                        property: "instanceNum",
-                        value: obj.instanceNum
-                    };
-                }
+//#region /////  AV InstanceNum Check /////
+        for (let device in deviceList) {
 
+            const dev = deviceList[device];
+
+            for (let object in dev.bacnet.objects) {
+                const obj = dev.bacnet.objects[object];
+                
                 if (obj.objectType === "analogValue") {
                     if (obj.assignementMode !== "manual" && obj.instanceNum >= dev.bacnet.instanceRangeAV) {
                         return {
                             ok: false,
                             errorType: "deviceListBACnetObjectConfiguration",
-                            message: "Analog instanceNum too high",
+                            message: `Analog instanceNum too high for object ${object} of device ${device}`,
                             device,
                             object,
                             property: "instanceNum",
@@ -424,17 +415,26 @@ module.exports = function (RED) {
                         };
                     } else if (obj.assignementMode === "manual") {
                         objectInstanceArrayAVManual.push(obj.instanceNum);
-                    } else {
-                        instanceRangeAV++;
                     }
                 }
+            }
+        }
+//#endregion
+
+//#region /////  BV InstanceNum Check /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+
+            for (let object in dev.bacnet.objects) {
+                const obj = dev.bacnet.objects[object];
 
                 if (obj.objectType === "binaryValue") {
                     if (obj.assignementMode !== "manual" && obj.instanceNum >= dev.bacnet.instanceRangeBV) {
                         return {
                             ok: false,
                             errorType: "deviceListBACnetObjectConfiguration",
-                            message: "Binary instanceNum too high",
+                            message: `Binary instanceNum too high for object ${object} of device ${device}`,
                             device,
                             object,
                             property: "instanceNum",
@@ -442,39 +442,142 @@ module.exports = function (RED) {
                         };
                     } else if (obj.assignementMode === "manual") {
                         objectInstanceArrayBVManual.push(obj.instanceNum);
-                    } else {
-                        instanceRangeBV++;
                     }
                 }
             }
+        }
+//#endregion        
 
+//#region /////  objects Name Check  /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+
+            for (let object in dev.bacnet.objects) {
+                const obj = dev.bacnet.objects[object];
+
+                if (objectNameArray.some( name => name === object)) {
+                    return {
+                        ok: false,
+                        errorType: "deviceListBACnetConfiguration",
+                        message: `name already used for object ${object} of device ${device}`,
+                        device,
+                        object,
+                        value: dev.bacnet.instanceRangeBV
+                    };
+                }else{
+                objectNameArray.push(object);
+                }
+            }
+        }
+//#endregion
+
+//#region ///// device InstanceNum Check /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+
+            for (let object in dev.bacnet.objects) {
+                const obj = dev.bacnet.objects[object];
+
+                if (objectInstanceArray.some( instanceNum => instanceNum === obj.instanceNum)) {
+                    return {
+                        ok: false,
+                        errorType: "deviceListBACnetConfiguration",
+                        message: `instanceNum already used for object ${object} of device ${device}`,
+                        device,
+                        object,
+                        property: "instanceNum",
+                        value: dev.bacnet.instanceRangeBV
+                    };
+                }else{
+                objectInstanceArray.push(obj.instanceNum);
+                }
+                
+            }
+        }
+//#endregion
+
+//#region ///// device InstanceRangeAV Check /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+            let instanceRangeAV = 0;
+
+            for (let object in dev.bacnet.objects) {
+                
+                if (obj.objectType === "analogValue") {
+                        instanceRangeAV++;
+                }
+            }
+            
             if (dev.bacnet.instanceRangeAV < instanceRangeAV) {
                 return {
                     ok: false,
                     errorType: "deviceListBACnetConfiguration",
-                    message: "InstanceRangeAV too small",
+                    message: `InstanceRangeAV too small for device ${device}`,
                     device,
                     property: "instanceRangeAV",
                     value: dev.bacnet.instanceRangeAV
                 };
             }
+        }
+//#endregion        
+        
+//#region ///// device InstanceRangeBV Check /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+            let instanceRangeBV = 0;
+
+            for (let object in dev.bacnet.objects) {
+                
+                if (obj.objectType === "analogValue") {
+                        instanceRangeBV++;
+                }
+            }
             if (dev.bacnet.instanceRangeBV < instanceRangeBV) {
                 return {
                     ok: false,
                     errorType: "deviceListBACnetConfiguration",
-                    message: "InstanceRangeBV too small",
+                    message: `InstanceRangeBV too small for device ${device}`,
                     device,
                     property: "instanceRangeBV",
                     value: dev.bacnet.instanceRangeBV
                 };
             }
+        }
+//#endregion
+
+//#region ///// device Name Check /////
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+
+            if (deviceNameArray.some( name => name === device)) {
+                    return {
+                        ok: false,
+                        errorType: "deviceListBACnetConfiguration",
+                        message: `name already used for device ${device}`,
+                        device,
+                        value: dev.bacnet.instanceRangeBV
+                    };
+                }else{
+                deviceNameArray.push(object);
+                }
+        }
+//#endregion
+
+//#region ///// AV overlap Check /////
+        let objectInstanceArrayAV = []
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
 
             objectInstanceArrayAV.push({ device, offset: dev.bacnet.offsetAV, instanceRange: dev.bacnet.instanceRangeAV, maxdevNum: dev.identity.maxDevNum });
-            objectInstanceArrayBV.push({ device, offset: dev.bacnet.offsetBV, instanceRange: dev.bacnet.instanceRangeBV, maxdevNum: dev.identity.maxDevNum });
         }
 
         objectInstanceArrayAV.sort((a, b) => a.offset - b.offset);
-        objectInstanceArrayBV.sort((a, b) => a.offset - b.offset);
 
         for (let i = 0; i < objectInstanceArrayAV.length - 1; i++) {
             const current = objectInstanceArrayAV[i];
@@ -483,7 +586,7 @@ module.exports = function (RED) {
                 return {
                     ok: false,
                     errorType: "deviceListOverlap",
-                    message: "Analog BACnet objects overlap",
+                    message: `Analog BACnet objects overlap for device ${current.device} and device ${next.device}`,
                     device1: current.device,
                     device2: next.device
                 };
@@ -494,14 +597,26 @@ module.exports = function (RED) {
                     return {
                         ok: false,
                         errorType: "deviceListOverlapManual",
-                        message: "Manual analog object instance overlaps another device's range",
+                        message: `Manual analog object instance (${inst}) overlaps another device's range`,
                         device: current.device,
                         instanceNum: inst
                     };
                 }
             }
         }
+//#endregion
 
+//#region /////  BV overlap Check /////
+        let objectInstanceArrayBV = [];
+        for (let device in deviceList) {
+
+            const dev = deviceList[device];
+
+            objectInstanceArrayBV.push({ device, offset: dev.bacnet.offsetBV, instanceRange: dev.bacnet.instanceRangeBV, maxdevNum: dev.identity.maxDevNum });
+        }    
+        
+        objectInstanceArrayBV.sort((a, b) => a.offset - b.offset);
+        
         for (let i = 0; i < objectInstanceArrayBV.length - 1; i++) {
             const current = objectInstanceArrayBV[i];
             const next = objectInstanceArrayBV[i + 1];
@@ -509,7 +624,7 @@ module.exports = function (RED) {
                 return {
                     ok: false,
                     errorType: "deviceListOverlap",
-                    message: "Binary BACnet objects overlap",
+                    message: `Binary BACnet objects overlap for device ${current.device} and device ${next.device}`,
                     device1: current.device,
                     device2: next.device
                 };
@@ -527,7 +642,7 @@ module.exports = function (RED) {
                 }
             }
         }
-
+//#endregion
         return { ok: true };
     }
 
