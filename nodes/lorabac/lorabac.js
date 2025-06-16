@@ -279,8 +279,6 @@ module.exports = function (RED) {
     }
 
     function verifyDeviceList(deviceList) {
-        const networkServerSupported = ["tts", "chirpstack", "actility"];
-        const protocolSupported = ["restAPIBacnet", "bacnet"];
         const regexIP = /^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}$/;
 
 
@@ -295,7 +293,7 @@ module.exports = function (RED) {
         for (let device in deviceList) {
             const dev = deviceList[device];
 
-            if (!regexIP.test(device.controller.ipAddress)){
+            if (!regexIP.test(dev?.controller?.ipAddress)){
                 return {
                     ok: false,
                     message: "Indvalid IP address",
@@ -454,7 +452,6 @@ module.exports = function (RED) {
             const dev = deviceList[device];
 
             for (let object in dev.bacnet.objects) {
-                const obj = dev.bacnet.objects[object];
 
                 if (objectNameArray.some( name => name === object)) {
                     return {
@@ -463,7 +460,7 @@ module.exports = function (RED) {
                         message: `name already used for object ${object} of device ${device}`,
                         device,
                         object,
-                        value: dev.bacnet.instanceRangeBV
+                        value: object
                     };
                 }else{
                 objectNameArray.push(object);
@@ -505,7 +502,8 @@ module.exports = function (RED) {
             let instanceRangeAV = 0;
 
             for (let object in dev.bacnet.objects) {
-                
+                const obj = dev.bacnet.objects[object];
+
                 if (obj.objectType === "analogValue") {
                         instanceRangeAV++;
                 }
@@ -531,6 +529,7 @@ module.exports = function (RED) {
             let instanceRangeBV = 0;
 
             for (let object in dev.bacnet.objects) {
+                const obj = dev.bacnet.objects[object];
                 
                 if (obj.objectType === "analogValue") {
                         instanceRangeBV++;
@@ -557,13 +556,12 @@ module.exports = function (RED) {
             if (deviceNameArray.some( name => name === device)) {
                     return {
                         ok: false,
-                        errorType: "deviceListBACnetConfiguration",
                         message: `name already used for device ${device}`,
                         device,
-                        value: dev.bacnet.instanceRangeBV
+                        value: device
                     };
                 }else{
-                deviceNameArray.push(object);
+                deviceNameArray.push(device);
                 }
         }
 //#endregion
