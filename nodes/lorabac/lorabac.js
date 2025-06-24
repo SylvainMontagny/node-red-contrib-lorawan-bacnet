@@ -455,7 +455,7 @@ module.exports = function (RED) {
                     return {
                         ok: false,
                         errorType: "deviceListBACnetConfiguration",
-                        message: `name already used for object ${object} of device ${device}`,
+                        message: `Name already used: Object ${object} of device ${device}`,
                         device,
                         object,
                         value: object
@@ -467,7 +467,7 @@ module.exports = function (RED) {
         }
 //#endregion
 
-//#region ///// device InstanceNum Check /////
+//#region ///// device objects InstanceNum Check /////
         for (let device in deviceList) {
 
             const dev = deviceList[device];
@@ -480,7 +480,7 @@ module.exports = function (RED) {
                     return {
                         ok: false,
                         errorType: "deviceListBACnetConfiguration",
-                        message: `instanceNum already used for object ${object} of device ${device}`,
+                        message: `instanceNum already used: Object ${object} of device ${device}`,
                         device,
                         object,
                         property: "instanceNum",
@@ -557,7 +557,7 @@ module.exports = function (RED) {
             if (deviceNameArray.some( name => name === device)) {
                     return {
                         ok: false,
-                        message: `name already used for device ${device}`,
+                        message: `name already used: Device ${device}`,
                         device,
                         value: device
                     };
