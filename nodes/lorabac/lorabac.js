@@ -532,7 +532,7 @@ module.exports = function (RED) {
             for (let object in dev.bacnet.objects) {
                 const obj = dev.bacnet.objects[object];
                 
-                if (obj.objectType === "analogValue") {
+                if (obj.objectType === "binaryValue") {
                         instanceRangeBV++;
                 }
             }
