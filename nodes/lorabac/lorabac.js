@@ -286,9 +286,6 @@ module.exports = function (RED) {
         let objectInstanceArrayAVManual = [], objectInstanceArrayBVManual = [];
         let deviceNameArray = [];
 
-        
-        let objectNameArray = [], objectInstanceArray = [];
-
 //#region /////  IP Check  /////        
         for (let device in deviceList) {
             const dev = deviceList[device];
@@ -450,6 +447,7 @@ module.exports = function (RED) {
         for (let device in deviceList) {
 
             const dev = deviceList[device];
+            let objectNameArray = []
 
             for (let object in dev.bacnet.objects) {
 
@@ -473,6 +471,7 @@ module.exports = function (RED) {
         for (let device in deviceList) {
 
             const dev = deviceList[device];
+            let objectInstanceArray = [];
 
             for (let object in dev.bacnet.objects) {
                 const obj = dev.bacnet.objects[object];
