@@ -471,12 +471,12 @@ module.exports = function (RED) {
         for (let device in deviceList) {
 
             const dev = deviceList[device];
-            let objectInstanceArray = [];
+            let objectInstanceArrayAV = [], objectInstanceArrayBV = [];
 
             for (let object in dev.bacnet.objects) {
                 const obj = dev.bacnet.objects[object];
 
-                if (objectInstanceArray.some( instanceNum => instanceNum === obj.instanceNum)) {
+                if ((obj.objectType === "analogValue" && objectInstanceArrayAV.some( instanceNum => instanceNum === obj.instanceNum))||(obj.objectType === "binaryValue" && objectInstanceArrayBV.some( instanceNum => instanceNum === obj.instanceNum))) {
                     return {
                         ok: false,
                         errorType: "deviceListBACnetConfiguration",
@@ -486,8 +486,10 @@ module.exports = function (RED) {
                         property: "instanceNum",
                         value: dev.bacnet.instanceRangeBV
                     };
-                }else{
-                objectInstanceArray.push(obj.instanceNum);
+                }else if (obj.objectType === "binaryValue") {
+                    objectInstanceArrayBV.push(obj.instanceNum);
+                }else if (obj.objectType === "analogValue") {
+                    objectInstanceArrayAV.push(obj.instanceNum);
                 }
                 
             }
