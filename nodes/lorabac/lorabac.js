@@ -297,7 +297,7 @@ module.exports = function (RED) {
                 return {
                     ok: false,
                     message: "Indvalid IP address",
-                    value: device.controller.ipAddress
+                    value: dev.controller.ipAddress
                 };
             }
         }

@@ -178,7 +178,7 @@
   // ==================================================
 
   /**
-  * Create a new device based on the base devise
+  * Create a new device based on the base device
   * Filled with default values if not found in base device / no base device
   * Base device is a device from a "formated" JSON device list
   */
@@ -863,12 +863,12 @@
     }
 
     // Remove actility key if networkServer is not actility and no downlink objects
-    if (!(node.networkServer === "actility" && hasDownlinkObject(arrayDevice))) {
+    if (!(node.globalConfig.networkServer === "actility" && hasDownlinkObject(arrayDevice))) {
       delete device.lorawan.actility;
     }
 
     // Remove chirpstack key if networkServer is not chirpstack
-    if (node.networkServer !== "chirpstack") {
+    if (node.globalConfig.networkServer !== "chirpstack") {
       delete device.lorawan.chirpstack;
     }
 
@@ -1043,7 +1043,7 @@
 
     // Chirpstack Configuration
     grpcApiKey: "API key of your chirpstack LNS",
-    serverAddress: "Server address of your chirpstack LNS",
+    serverAddress: "Address of your chirpstack LNS",
     grpcPort: "gRPC port of your chirpstack LNS",
 
     // Rest API BMS Settings
