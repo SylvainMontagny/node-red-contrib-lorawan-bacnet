@@ -463,7 +463,7 @@
       objectName: baseObjectName || `object-${device.objectsCount}`,
       lorawanPayloadName: baseObject.lorawanPayloadName ?? "payload-name",
       dataDirection: baseObject.dataDirection ?? "uplink",
-      downlinkPort: baseObject.lorawan?.downlinkPort ?? 30,
+      downlinkPort: baseObject.downlinkPort ?? 30,
       assignementMode: baseObject.assignementMode ?? "auto",
       downlinkStrategy: baseObject.downlinkStrategy ?? "compareToUplinkObject",
       instanceNum: baseObject.instanceNum ?? 0,
