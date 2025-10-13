@@ -55,8 +55,9 @@ module.exports = function (RED) {
 
     function setupGlobalVariables(node, config) {
         const flow = node.context().flow;
+        const global = node.context().global;
 
-        flow.set('g_deviceList', config.deviceList);
+        global.set('g_deviceList', config.deviceList);
 
         flow.set('g_httpRequestTimeOut', 5000);
         flow.set('g_tts_topicDownlinkSuffix', "/down");
@@ -85,8 +86,9 @@ module.exports = function (RED) {
 
     function createObject(node, msg){
         const flow = node.context().flow;
+        const global = node.context().global;
         
-        let deviceList = flow.get('g_deviceList');
+        let deviceList = global.get('g_deviceList');
         let networkServer;
         let deviceName, deviceType, deviceNum, devEUI, topicDownlink;
         let devicePayload = {};
