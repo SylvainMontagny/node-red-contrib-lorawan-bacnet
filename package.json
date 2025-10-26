@@ -1,11 +1,11 @@
 {
   "name": "@montagny/node-red-contrib-lorawan-bacnet",
   "version": "1.1.5",
-  "description": "Provides custom Node-RED nodes for integrating LoRaWAN devices with BACnet systems",
+  "description": "Custom Node-RED nodes to interface LoRaWAN devices with BACnet protocol. ",
   "keywords": [
     "LoRaWAN",
     "LoRaBAC",
-    "node-red",
+    "LoRa",
     "BACnet",
     "IoT"
   ],
